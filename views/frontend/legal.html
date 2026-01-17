@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FudiPOS - Centro Legal y Soporte</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fuentes & Iconos -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Habilitar modo oscuro manual
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: { 
+                        primary: '#6366f1', 
+                        primaryDark: '#4f46e5', 
+                        secondary: '#10b981',
+                        dark: '#0f172a'
+                    }
+                }
+            }
+        }
+        
+        // Script para evitar parpadeo (FOUC)
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <style>
+        .blob { position: absolute; filter: blur(40px); z-index: -1; opacity: 0.4; animation: float 10s infinite ease-in-out; }
+        @keyframes float { 0% { transform: translateY(0px) scale(1); } 50% { transform: translateY(-20px) scale(1.1); } 100% { transform: translateY(0px) scale(1); } }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        .text-gradient { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #6366f1, #ec4899); }
+    </style>
+</head>
+<body class="font-sans text-slate-800 antialiased bg-slate-50">
+
+    <!-- NAVBAR SIMPLE -->
+    <nav class="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <a href="/" class="flex items-center gap-2 group">
+                    <div class="w-10 h-10  flex items-center justify-center text-white text-xl">
+                        <img src="../assets/images/icon-on.png" alt="logo" class="rounded-full">
+                    </div>
+                    <span class="font-bold text-2xl tracking-tight text-slate-800 dark:text-white">Fudi<span class="text-red-600">POS</span></span>
+                </a>
+                <a href="/" class="text-sm font-bold text-slate-500 hover:text-brand flex items-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HEADER -->
+    <header class="pt-32 pb-12 hero-gradient border-b border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h1 class="text-4xl font-black text-slate-900 mb-4">Centro Legal y Transparencia</h1>
+            <p class="text-lg text-slate-600">Aquí encontrarás toda la información sobre cómo gestionamos tus datos, nuestros términos de servicio y cómo contactarnos.</p>
+            <p class="text-sm text-slate-400 mt-4">Última actualización: Enero 2026</p>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="flex flex-col lg:flex-row gap-12">
+            
+            <!-- SIDEBAR DE NAVEGACIÓN (Sticky) -->
+            <aside class="lg:w-1/4 hidden lg:block">
+                <div class="sticky top-24 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h5 class="font-bold text-slate-900 mb-4 uppercase text-xs tracking-wider">Índice</h5>
+                    <nav class="flex flex-col space-y-3 text-sm">
+                        <a href="#privacidad" id="link-privacidad" class="active-link transition-all">Política de Privacidad</a>
+                        <a href="#terminos" id="link-terminos" class="inactive-link transition-all">Términos y Condiciones</a>
+                        <a href="#cookies" id="link-cookies" class="inactive-link transition-all">Política de Cookies</a>
+                        <a href="#contacto" id="link-contacto" class="inactive-link transition-all">Contacto y Soporte</a>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- CONTENIDO DOCUMENTOS -->
+            <main class="lg:w-3/4 bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-slate-100 legal-content">
+                
+                <!-- SECCIÓN: PRIVACIDAD -->
+                <section id="privacidad" class="mb-16 scroll-mt-28">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-shield-halved text-2xl text-brand"></i>
+                        <h2 class="!m-0 text-3xl">Política de Privacidad</h2>
+                    </div>
+                    <hr class="border-slate-100 mb-6">
+                    
+                    <p>En FudiPOS, nos tomamos muy en serio la privacidad de tus datos. Esta política describe cómo recopilamos, usamos y protegemos la información personal que nos proporcionas al utilizar nuestros servicios (POS, KDS, Marketplace, etc.).</p>
+                    
+                    <h3>1. Información que recopilamos</h3>
+                    <p>Podemos recopilar los siguientes tipos de información:</p>
+                    <ul>
+                        <li><strong>Información de la Cuenta:</strong> Nombre, correo electrónico, número de teléfono y contraseña.</li>
+                        <li><strong>Datos del Negocio:</strong> Nombre del restaurante, ubicación, menús y datos de facturación.</li>
+                        <li><strong>Datos de Uso:</strong> Información sobre cómo interactúas con nuestra plataforma (logs, dirección IP).</li>
+                        <li><strong>Datos de Clientes Finales:</strong> Información necesaria para procesar pedidos (dirección de entrega, teléfono) cuando utilizan el Marketplace o PWA.</li>
+                    </ul>
+
+                    <h3>2. Uso de la información</h3>
+                    <p>Utilizamos tu información para:</p>
+                    <ul>
+                        <li>Proveer y mantener nuestros servicios operativos.</li>
+                        <li>Procesar pagos y facturación.</li>
+                        <li>Enviar notificaciones importantes sobre tu cuenta o pedidos (ej. alertas de KDS vía WhatsApp).</li>
+                        <li>Mejorar y personalizar la experiencia del usuario.</li>
+                    </ul>
+
+                    <h3>3. Compartir información</h3>
+                    <p>No vendemos tu información personal. Solo compartimos datos con terceros necesarios para la operación, como pasarelas de pago (ej. Stripe) o servicios de mensajería (ej. Twilio para WhatsApp), bajo estrictos acuerdos de confidencialidad.</p>
+                </section>
+
+                <!-- SECCIÓN: TÉRMINOS -->
+                <section id="terminos" class="mb-16 scroll-mt-28">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-scale-balanced text-2xl text-brand"></i>
+                        <h2 class="!m-0 text-3xl">Términos y Condiciones</h2>
+                    </div>
+                    <hr class="border-slate-100 mb-6">
+
+                    <p>Bienvenido a FudiPOS. Al acceder o utilizar nuestra plataforma, aceptas estar legalmente vinculado por estos términos.</p>
+
+                    <h3>1. Uso del Servicio</h3>
+                    <p>FudiPOS te otorga una licencia limitada, no exclusiva e intransferible para usar nuestro software de gestión de restaurantes. Eres responsable de mantener la confidencialidad de tu cuenta.</p>
+
+                    <h3>2. Pagos y Suscripciones</h3>
+                    <p>El servicio se ofrece bajo un modelo de suscripción (mensual o anual). Los precios están sujetos a cambios con previo aviso. La falta de pago puede resultar en la suspensión del servicio.</p>
+
+                    <h3>3. Propiedad Intelectual</h3>
+                    <p>Todo el contenido, software y diseño de FudiPOS son propiedad exclusiva de FudiPOS Inc. y están protegidos por leyes de derechos de autor.</p>
+
+                    <h3>4. Limitación de Responsabilidad</h3>
+                    <p>FudiPOS no será responsable por daños indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del servicio, incluyendo pérdida de beneficios o datos.</p>
+                </section>
+
+                <!-- SECCIÓN: COOKIES -->
+                <section id="cookies" class="mb-16 scroll-mt-28">
+                    <div class="flex items-center gap-3 mb-4">
+                        <i class="fa-solid fa-cookie-bite text-2xl text-brand"></i>
+                        <h2 class="!m-0 text-3xl">Política de Cookies</h2>
+                    </div>
+                    <hr class="border-slate-100 mb-6">
+
+                    <p>Utilizamos cookies y tecnologías similares para mejorar tu experiencia.</p>
+                    
+                    <h3>¿Qué son las cookies?</h3>
+                    <p>Son pequeños archivos de texto que se almacenan en tu dispositivo. Nos ayudan a recordarte y a entender cómo usas nuestro sitio.</p>
+
+                    <h3>Tipos de cookies que usamos</h3>
+                    <ul>
+                        <li><strong>Esenciales:</strong> Necesarias para que el sitio funcione (ej. mantener tu sesión iniciada).</li>
+                        <li><strong>Analíticas:</strong> Nos ayudan a entender el tráfico del sitio (ej. Google Analytics).</li>
+                        <li><strong>Funcionales:</strong> Permiten recordar tus preferencias (ej. idioma).</li>
+                    </ul>
+                </section>
+
+                <!-- SECCIÓN: CONTACTO -->
+                <section id="contacto" class="scroll-mt-28">
+                    <div class="bg-slate-50 p-8 rounded-2xl border border-slate-200">
+                        <div class="flex items-center gap-3 mb-6">
+                            <i class="fa-solid fa-envelope-open-text text-2xl text-brand"></i>
+                            <h2 class="!m-0 text-2xl">Contacto y Soporte</h2>
+                        </div>
+                        <p class="mb-6 text-sm">Si tienes alguna duda legal, problema con tu cuenta o simplemente quieres saludar, estamos aquí para ayudarte.</p>
+                        
+                        <form class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                                    <input type="text" class="w-full p-3 rounded-lg border border-slate-300 focus:border-brand outline-none transition" placeholder="Tu nombre">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
+                                    <input type="email" class="w-full p-3 rounded-lg border border-slate-300 focus:border-brand outline-none transition" placeholder="ejemplo@correo.com">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Asunto</label>
+                                <select class="w-full p-3 rounded-lg border border-slate-300 focus:border-brand outline-none transition bg-white">
+                                    <option>Soporte Técnico</option>
+                                    <option>Duda Legal / Privacidad</option>
+                                    <option>Ventas</option>
+                                    <option>Otro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Mensaje</label>
+                                <textarea rows="4" class="w-full p-3 rounded-lg border border-slate-300 focus:border-brand outline-none transition" placeholder="¿En qué podemos ayudarte?"></textarea>
+                            </div>
+                            <button type="button" class="px-6 py-3 bg-brand hover:bg-brandDark bg-primary text-white font-bold rounded-xl shadow-lg transition w-full md:w-auto">
+                                Enviar Mensaje
+                            </button>
+                        </form>
+
+                        <div class="mt-8 pt-6 border-t border-slate-200 flex flex-col md:flex-row gap-6 text-sm text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-brand"></i>
+                                <span>Col. Dublán Nuevo Casas Grandes, Chihuahua, MX</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-phone text-brand"></i>
+                                <span>+52 (636) 122-9546</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- FOOTER SIMPLE -->
+    <footer class="bg-white py-8 border-t border-slate-100 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="font-bold text-slate-900 mb-2">FudiPOS Inc.</p>
+            <p class="text-xs text-slate-400">&copy; 2026 Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Script simple para resaltar enlace activo en scroll -->
+    <script>
+        const sections = document.querySelectorAll("section");
+        const navLi = document.querySelectorAll("aside nav a");
+
+        window.addEventListener("scroll", () => {
+            let current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= (sectionTop - 150)) {
+                    current = section.getAttribute("id");
+                }
+            });
+
+            navLi.forEach((a) => {
+                a.classList.remove("active-link");
+                a.classList.add("inactive-link");
+                if (a.getAttribute("href").includes(current)) {
+                    a.classList.add("active-link");
+                    a.classList.remove("inactive-link");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
