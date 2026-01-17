@@ -154,7 +154,8 @@ exports.registerBusiness = async (req, res) => {
             slug: savedBusiness.slug,
             token, 
             username: newUser.username, 
-            role: newUser.role 
+            role: newUser.role, 
+            user: newUser
         });
 
     } catch (error) {
