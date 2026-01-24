@@ -93,7 +93,7 @@
 
             <!-- LOGO -->
             <div class="h-20 flex items-center justify-center border-b border-slate-800">
-                <div class="flex items-center space-x-2" v-if="!collapsed">
+                <div class="flex items-center space-x-2 ml-4" v-if="!collapsed">
                     <img v-if="settings.avatar" :src="settings.avatar" class="w-10 h-10 object-cover rounded-full">
                     <!--<img v-else src="../assets/images/icon-on.png" class="w-10 h-10" alt="Logo">-->
                     <div v-else class="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-primary/30">
@@ -192,7 +192,7 @@
             </header>
 
             <!-- Content Scrollable -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-900 p-8 transition-colors duration-300">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-900 p-2 md:p-4 lg:p-8 transition-colors duration-300">
                 <!-- === VISTAS SUPER ADMIN === -->
                 <!-- SAAS CLIENTS VIEW -->
                 <div v-if="currentView === 'saas_clients'" class="space-y-6 animate-fade-in">
@@ -493,7 +493,8 @@
                     </div>
                     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden p-4">
                         <table id="productsTable" class="w-full text-left display responsive nowrap" style="width:100%">
-                            <thead class="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs uppercase"><tr><th>Imagen</th><th>Nombre</th><th>Precio</th><th>Categorías</th><th>Estado</th><th>Acciones</th></tr></thead>
+                            <thead class="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs uppercase">
+                                <tr><th>Imagen</th><th>Nombre</th><th>Precio</th><th>Categorías</th><th>Estado</th><th>Acciones</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -996,7 +997,7 @@
                     </div>
                 </div>
 
-                <!-- VIEW FINANZAS / CAJA -->
+                <!-- =====================  VIEW FINANZAS / CAJA ===================== -->
                 <div v-if="currentView === 'finance'" class="animate-fade-in space-y-6">
                     
                     <!-- Header -->
@@ -1143,6 +1144,10 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- =====================  historial de cajas ===================== -->
+                <div v-if="currentView === 'finance_history'" class="animate-fade-in space-y-6">
                     
                     <!-- HISTORIAL DE CORTES (SIEMPRE VISIBLE) -->
                     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 mt-8">
@@ -1175,7 +1180,9 @@
                                             </span>
                                         </td>
                                         <td class="p-3 text-right">
-                                            <button class="text-primary hover:text-primaryDark"><i class="fa-solid fa-print"></i></button>
+                                            <button @click="finance.viewShift(h)" class="w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -1184,6 +1191,7 @@
                     </div>
 
                 </div>
+                                        
 
                 <!-- VIEW LISTADO DE USUARIOS -->
                 <div v-if="currentView === 'users'" class="space-y-6 animate-fade-in">
@@ -1352,181 +1360,306 @@
                     </div>
                 </div>
 
-                <!-- CONFIGURACIÓN VIEW -->
-                <div v-if="currentView === 'settings'" class="space-y-4 md:space-y-6 animate-fade-in mx-auto px-0 md:px-0 max-w-4xl">
-                    <h2 class="text-xl md:text-2xl font-bold text-slate-800 dark:text-white px-4 md:px-0">Configuración del Sistema</h2>
-                    
-                    <!-- TARJETA 1: IDENTIDAD VISUAL -->
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-                        <div class="p-4 md:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div class="w-full sm:w-auto">
-                                <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white flex items-center gap-2">
-                                    <i class="fa-solid fa-store text-primary text-base md:text-lg"></i> 
-                                    <span class="truncate">{{ settings.role === 'superadmin' ? 'Plataforma SaaS' : 'Mi Negocio' }}</span>
-                                </h3>
-                                <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">Personaliza la identidad visual e información.</p>
-                            </div>
-                            <div class="w-full sm:w-auto">
+                <!-- =====================  CONFIGURACIÓN VIEW ===================== -->
+                <div v-if="currentView === 'settings'" class="animate-fade-in mx-auto px-0 md:px-0 max-w-full">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 px-4">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-black dark:text-white">Configuración del Negocio</h1>
+                            <p class="text-slate-500 dark:text-slate-400">Administra tu perfil, categorías y zonas de entrega.</p>
+                        </div>
+                        <div>
+                            <div class="flex flex-col md:flex-row w-full items-center sm:w-auto gap-4 mb-8 px-4">
                                 <button @click="openPWA()" type="button" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs md:text-sm px-3 md:px-4 py-2 md:py-2.5 rounded-xl shadow-lg shadow-emerald-500/30 font-bold transition inline-flex items-center justify-center w-full sm:w-auto gap-2 cursor-pointer border-none">
                                     <i class="fa-solid fa-share text-sm md:text-base"></i>
                                     <span>Abrir mi App Web</span>
                                 </button>
-                            </div>
-                        </div>
-                        
-                        <div class="p-4 md:p-6">
-                            <div class="flex flex-col gap-6 md:gap-8">
-                                <!-- LOGO SECTION -->
-                                <div v-if="settings.role === 'admin_negocio'" class="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 sm:pb-0 sm:border-b border-slate-100 dark:border-slate-700">
-                                    <div class="flex flex-col items-center space-y-3 w-full sm:w-auto">
-                                        <label class="text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300">Logo del Negocio</label>
-                                        <div class="relative group cursor-pointer w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-                                            <input type="file" ref="avatarInput" @change="uploadAvatar" class="hidden" accept="image/*">
-                                            <div @click="$refs.avatarInput.click()" class="w-full h-full rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-700 transition relative bg-slate-50 dark:bg-slate-800 shadow-sm">
-                                                <img v-if="settings.avatar" :src="settings.avatar" class="w-full h-full object-cover">
-                                                <div v-else class="text-slate-400 flex flex-col items-center text-center p-2">
-                                                    <i class="fa-regular fa-image text-2xl md:text-3xl mb-1"></i>
-                                                    <span class="text-[9px] md:text-[10px] font-medium uppercase">Subir Logo</span>
-                                                </div>
-                                                <div v-if="isUploadingAvatar" class="absolute inset-0 bg-white/80 dark:bg-black/60 flex items-center justify-center z-10">
-                                                    <i class="fa-solid fa-circle-notch fa-spin text-primary text-lg md:text-xl"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- FORMULARIO CAMPOS -->
-                                    <div class="flex-1 space-y-4 w-full">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                    {{ settings.role === 'superadmin' ? 'Nombre Plataforma' : 'Nombre del Negocio' }}
-                                                </label>
-                                                <input v-model="settings.appName" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                            </div>
-                                            <div v-if="settings.role === 'admin_negocio'">
-                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                    Slug <small class="text-[10px]">(URL de tu WebApp)</small>
-                                                </label>
-                                                <input v-model="settings.slug" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                            </div>
-                                            <div v-if="settings.role === 'admin_negocio'">
-                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                    Dirección Fisica
-                                                </label>
-                                                <input v-model="settings.address" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- RESTO DE CAMPOS (sin logo) -->
-                                <div v-else class="space-y-4">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                {{ settings.role === 'superadmin' ? 'Nombre Plataforma' : 'Nombre del Negocio' }}
-                                            </label>
-                                            <input v-model="settings.appName" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- CAMPOS ADICIONALES ADMIN -->
-                                <div v-if="settings.role === 'admin_negocio'" class="space-y-4">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Teléfono / WhatsApp</label>
-                                            <input v-model="settings.phone" type="tel" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Correo de Contacto</label>
-                                            <input v-model="settings.ownerEmail" type="email" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Color Principal</label>
-                                            <div class="flex gap-2 items-center">
-                                                <div class="relative overflow-hidden w-10 h-10 flex-shrink-0 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm">
-                                                    <input v-model="settings.primaryColor" type="color" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-none p-0">
-                                                </div>
-                                                <input v-model="settings.primaryColor" type="text" class="flex-1 px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary uppercase font-mono">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Tarjeta Categorías -->
-                                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-                                        <div class="flex justify-between items-center mb-4">
-                                            <h3 class="font-bold text-lg flex items-center gap-2 dark:text-white">
-                                                <i class="fa-solid fa-tags text-brand"></i> Categorías
-                                            </h3>
-                                            <span class="text-xs font-bold bg-brand/10 text-brand px-2 py-1 rounded-lg">{{ settings.categories.length }} seleccionadas</span>
-                                        </div>
-                                        
-                                        <p class="text-sm text-slate-500 mb-4">Selecciona todas las categorías que describan tu menú. Esto ayuda a que te encuentren en el buscador.</p>
-
-                                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto thin-scroll pr-1">
-                                            <div v-for="avilcts in availableCategories" :key="avilcts.id" 
-                                                @click="toggleCategory(avilcts.id)"
-                                                class="category-card cursor-pointer border border-slate-200 dark:border-slate-600 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 text-center hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-                                                :class="{'category-selected': settings.categories.includes(avilcts.id)}">
-                                                <span class="text-2xl">{{ avilcts.emoji }}</span>
-                                                <span class="text-[11px] font-bold leading-tight">{{ avilcts.name }}</span>
-                                            </div>
-                                        </div>
-                                        <p v-if="settings.categories.length === 0" class="text-red-500 text-xs mt-2 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Debes seleccionar al menos una.</p>
-                                    </div>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 mt-6 pt-4 gap-4 border-t">
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Moneda</label>
-                                            <select v-model="settings.currency" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer">
-                                                <option value="" disabled selected>Selecciona una moneda</option>
-                                                <option value="MXN">Pesos Mexicanos (MXN)</option>
-                                                <!--<option value="USD">Dólares (USD)</option>-->
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">IVA %</label>
-                                            <input v-model="settings.iva" type="number" placeholder="% de IVA para cada operación" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- BOTÓN GUARDAR -->
-                                <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                    <button @click="saveSettings" class="w-full sm:w-auto bg-primary hover:bg-primaryDark text-white px-4 md:px-6 py-2.5 rounded-xl font-medium transition shadow-md flex items-center justify-center gap-2">
-                                        <i class="fa-solid fa-save text-sm md:text-base"></i>
-                                        <span class="text-sm md:text-base">Guardar Cambios</span>
-                                    </button>
-                                </div>
+                            
+                                <button @click="saveSettings" :disabled="settings.saving" class="px-6 py-3 bg-slate-900 dark:bg-primary text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition flex items-center gap-2 disabled:opacity-50">
+                                    <i v-if="settings.saving" class="fa-solid fa-circle-notch fa-spin"></i>
+                                    <span v-else><i class="fa-solid fa-save"></i> Guardar Cambios</span>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TARJETA 2: ACCESO -->
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-                        <div class="p-4 md:p-6 border-b border-slate-100 dark:border-slate-700">
-                            <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white flex items-center gap-2">
-                                <i class="fa-solid fa-shield-halved text-secondary text-base md:text-lg"></i>
-                                <span>Acceso</span>
-                            </h3>
-                        </div>
-                        <div class="p-4 md:p-6 space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Usuario</label>
-                                    <input v-model="profile.username" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                                </div>
-                                <div>
-                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nueva Contraseña</label>
-                                    <input v-model="profile.newPassword" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- COLUMNA IZQUIERDA -->
+                        <div class="lg:col-span-2">
+                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2 dark:text-white"><i class="fa-regular fa-id-card text-primary"></i> Información</h3>
+                                <div class="space-y-4">
+                                    <div class="flex flex-col gap-6 md:gap-8">
+                                        <!-- CAMPOS ADICIONALES ADMIN -->
+                                        <div v-if="settings.role === 'admin_negocio'" class="space-y-4">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Teléfono / WhatsApp</label>
+                                                    <input v-model="settings.phone" type="tel" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Correo de Contacto</label>
+                                                    <input v-model="settings.ownerEmail" type="email" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                                        Dirección Fisica
+                                                    </label>
+                                                    <div class="flex gap-2">
+                                                        <input id="address-input" v-model="settings.address" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                                        <button @click="openMapModal" class="bg-indigo-50 dark:bg-slate-700 hover:bg-primary hover:text-white text-primary dark:text-slate-300 w-11 rounded-lg border border-indigo-100 dark:border-slate-600 transition flex items-center justify-center">
+                                                            <i class="fa-solid fa-map-location-dot"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Color Principal</label>
+                                                    <div class="flex gap-2 items-center">
+                                                        <div class="relative overflow-hidden w-10 h-10 flex-shrink-0 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm">
+                                                            <input v-model="settings.primaryColor" type="color" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-none p-0">
+                                                        </div>
+                                                        <input v-model="settings.primaryColor" type="text" class="flex-1 px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary uppercase font-mono">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="grid grid-cols-1 md:grid-cols-2 mt-6 pt-4 gap-4 border-t">
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Moneda</label>
+                                                    <select v-model="settings.currency" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer">
+                                                        <option value="" disabled selected>Selecciona una moneda</option>
+                                                        <option value="MXN">Pesos Mexicanos (MXN)</option>
+                                                        <!--<option value="USD">Dólares (USD)</option>-->
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">IVA %</label>
+                                                    <input v-model="settings.iva" type="number" placeholder="% de IVA para cada operación" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                                </div>
+                                            </div>
+                                        </div> 
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                <button @click="saveProfile" class="w-full sm:w-auto bg-slate-800 hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 md:px-6 py-2.5 rounded-xl font-medium transition shadow-md text-sm md:text-base">
-                                    Actualizar Perfil
-                                </button>
+
+                            <!-- HORARIO Y ENTREGA -->
+                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 mt-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-lg flex items-center gap-2 dark:text-white"><i class="fa-solid fa-clock text-primary"></i> Tiempos y Entrega</h3>
+                                </div>
+
+                                <p class="text-sm text-slate-500 mb-4">Configura los Tiempos y costos de entrega.</p>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <!-- Tiempo de entrega estimado -->
+                                    <div>
+                                        <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                            Tiempo de entrega estimado <small>(solo en minutos)</small>
+                                        </label>
+                                        <input v-model="settings.time" type="text" placeholder="Ej: 30-45" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <p class="text-xs text-slate-400 mt-1">Ej: 30-45</p>
+                                    </div>
+                                    <!-- Costo aproximado por persona -->
+                                    <div>
+                                        <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 ml-4">
+                                            Costo aproximado por persona <small>(no incluya ningún signo de moneda)</small>
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-slate-500">$</span>
+                                            <input v-model.number="settings.deliveryCost" type="number" step="0.01" placeholder="0.00" class="flex-1 px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- HORARIO DE ATENCIÓN -->
+                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 mt-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-lg flex items-center gap-2 dark:text-white"><i class="fa-regular fa-clock text-primary"></i> Horarios de Atención</h3>
+                                </div>
+                                <p class="text-sm text-slate-500 mb-4">Configura los horarios de apertura y cierre para cada día.</p>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    <div v-for="(day, index) in settings.businessHours" :key="index" 
+                                        class="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col justify-between group hover:border-primary/50 transition relative overflow-hidden">
+                                        
+                                        <!-- Indicador Estado -->
+                                        <div class="absolute top-0 right-0 w-16 h-16 pointer-events-none overflow-hidden">
+                                            <div class="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 w-16 h-16 rotate-45"
+                                                :class="day.isOpen ? 'bg-green-500' : 'bg-red-500'"></div>
+                                        </div>
+
+                                        <div>
+                                            <h4 class="font-bold text-slate-800 dark:text-white mb-1">{{ day.day }}</h4>
+                                            <div v-if="day.isOpen">
+                                                <p class="text-sm text-slate-600 dark:text-slate-300 font-mono">{{ day.open }} - {{ day.close }}</p>
+                                            </div>
+                                            <div v-else>
+                                                <span class="text-xs font-bold text-red-500 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-lg uppercase">Cerrado</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <button @click="openBusinessHoursModal(index)" class="mt-3 w-full py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-primary transition text-xs font-bold flex items-center justify-center gap-1">
+                                            <i class="fa-solid fa-pen"></i> Editar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CONFIGURACIÓN DE ENVÍOS -->
+                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 mt-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-lg flex items-center gap-2 dark:text-white"><i class="fa-solid fa-truck-fast text-primary"></i> Configuración de Envíos</h3>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="flex flex-col gap-3">
+                                        <!-- Opción 1: Yo gestiono mis envíos -->
+                                        <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-100 dark:border-slate-700 cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="settings.deliveryType === 'own' ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800' : ''">
+                                            <div class="pt-1">
+                                                <input type="radio" v-model="settings.deliveryType" value="own" class="w-5 h-5 text-primary border-slate-300 focus:ring-primary">
+                                            </div>
+                                            <div class="flex-1">
+                                                <span class="block font-bold text-slate-800 dark:text-white mb-1">Yo gestiono mis envíos</span>
+                                                <span class="block text-xs text-slate-500 dark:text-slate-400">Definir un costo fijo de envío que se sumará al total.</span>
+                                                
+                                                <!-- Input de Costo (Visible solo si es 'own') -->
+                                                <div v-if="settings.deliveryType === 'own'" class="mt-3 animate-fade-in max-w-xs">
+                                                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Costo de Envío</label>
+                                                    <div class="relative">
+                                                        <span class="absolute left-3 top-2.5 text-slate-400 font-bold">$</span>
+                                                        <input v-model.number="settings.deliveryCost" type="number" step="0.01" min="0" placeholder="0.00" class="w-full pl-8 pr-4 py-2 border rounded-lg bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        <!-- Opción 2: Repartidores Externos -->
+                                        <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-100 dark:border-slate-700 cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-700/50" :class="settings.deliveryType === 'external' ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800' : ''">
+                                            <div class="pt-1">
+                                                <input type="radio" v-model="settings.deliveryType" value="external" class="w-5 h-5 text-primary border-slate-300 focus:ring-primary">
+                                            </div>
+                                            <div class="flex-1">
+                                                <span class="block font-bold text-slate-800 dark:text-white mb-1">Uso repartidores externos</span>
+                                                <span class="block text-xs text-slate-500 dark:text-slate-400">El cliente paga el envío al recibir. FudiPos solo cobrará la comida en el ticket.</span>
+                                                <div class="mt-2 text-[10px] text-slate-400 italic">
+                                                    <i class="fa-solid fa-circle-info mr-1"></i> Selecciona esto si usas servicios como Uber Flash, Moto-envíos locales o Taxis.
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tarjeta Categorías -->
+                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 mt-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-lg flex items-center gap-2 dark:text-white"><i class="fa-solid fa-tags text-primary"></i> Categorías</h3>
+                                    <span class="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded-lg">{{settings.categories.length}}  seleccionadas</span>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="flex flex-col gap-6 md:gap-8">
+                                        <!-- CAMPOS ADICIONALES ADMIN -->
+                                        <div v-if="settings.role === 'admin_negocio'" class="space-y-4">
+                                            <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+                                                
+                                                <p class="text-sm text-slate-500 mb-4">Selecciona todas las categorías que describan tu menú. Esto ayuda a que te encuentren en el buscador.</p>
+
+                                                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto thin-scroll pr-1">
+                                                    <div v-for="avilcts in availableCategoriesStore" :key="avilcts.id" 
+                                                        @click="toggleCategory(avilcts.id)"
+                                                        class="category-card cursor-pointer border border-slate-200 dark:border-slate-600 rounded-2xl p-3 flex flex-col items-center justify-center gap-2 text-center hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                                                        :class="{'category-selected': settings.categories.includes(avilcts.id)}">
+                                                        <span class="text-2xl">{{ avilcts.emoji }}</span>
+                                                        <span class="text-[11px] font-bold leading-tight">{{ avilcts.name }}</span>
+                                                    </div>
+                                                </div>
+                                                <p v-if="settings.categories.length === 0" class="text-red-500 text-xs mt-2 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Debes seleccionar al menos una.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA DERECHA -->
+                        <div class="order-first lg:order-none space-y-4">
+                            <div v-if="settings.role === 'admin_negocio'"  class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 text-center"> 
+                                
+                                <!-- Imagen -->
+                                <h3 class="font-bold text-sm mb-4 uppercase text-slate-400">Logo / Portada</h3>
+                                <div class="flex flex-col items-center space-y-3 w-full sm:w-auto mb-4">
+                                    <div class="relative group cursor-pointer w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+                                        <input type="file" ref="avatarInput" @change="uploadAvatar" class="hidden" accept="image/*">
+                                        <div @click="$refs.avatarInput.click()" class="w-full h-full rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-700 transition relative bg-slate-50 dark:bg-slate-800 shadow-sm">
+                                            <img v-if="settings.avatar" :src="settings.avatar" class="w-full h-full object-cover">
+                                            <div v-else class="text-slate-400 flex flex-col items-center text-center p-2">
+                                                <i class="fa-regular fa-image text-2xl md:text-3xl mb-1"></i>
+                                                <span class="text-[9px] md:text-[10px] font-medium uppercase">Subir Logo</span>
+                                            </div>
+                                            <div v-if="isUploadingAvatar" class="absolute inset-0 bg-white/80 dark:bg-black/60 flex items-center justify-center z-10">
+                                                <i class="fa-solid fa-circle-notch fa-spin text-primary text-lg md:text-xl"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Estado (Abierto/Cerrado) -->
+                                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 space-y-4 text-left">
+                                    <div class="flex flex-col items-start space-y-3 w-full sm:w-auto mb-4">
+                                        <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Estado del Negocio</label>
+                                        <div class="flex items-center gap-3 h-10">
+                                            <button @click="settings.isOpen = !settings.isOpen" 
+                                                :class="settings.isOpen ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'" 
+                                                class="relative inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-bold transition shadow-sm text-sm w-full">
+                                                <i :class="settings.isOpen ? 'fa-solid fa-lock-open' : 'fa-solid fa-lock'"></i>
+                                                <span>{{ settings.isOpen ? 'Abierto' : 'Cerrado' }}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- FORMULARIO CAMPOS -->
+                                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 space-y-4 text-left">
+                                    <div>
+                                        <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                            {{ settings.role === 'superadmin' ? 'Nombre Plataforma' : 'Nombre del Negocio' }}
+                                        </label>
+                                        <input v-model="settings.appName" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                    </div>
+                                    <div v-if="settings.role === 'admin_negocio'">
+                                        <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                            Slug <small class="text-[10px]">(URL de tu WebApp)</small>
+                                        </label>
+                                        <input v-model="settings.slug" type="text" disabled class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-200 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                    </div>
+                                </div> 
+
+                                <!-- TARJETA 2: ACCESO -->
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden text-left">
+                                    <div class="p-4 md:p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <h3 class="font-bold text-base md:text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                                            <i class="fa-solid fa-shield-halved text-secondary text-base md:text-lg"></i>
+                                            <span>Acceso</span>
+                                        </h3>
+                                    </div>
+                                    <div class="p-4 md:p-6 space-y-4">
+                                        <div class="gap-4">
+                                            <div>
+                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Usuario <small>(Usado para login)</small></label>
+                                                <input v-model="profile.username" type="text" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                            </div>
+                                            <div class="mt-4">
+                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email <small>(Usado para login)</small></label>
+                                                <input v-model="profile.email" type="mail" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                            </div>
+                                            <div class="mt-4">
+                                                <label class="block text-xs md:text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nueva Contraseña</label>
+                                                <input v-model="profile.newPassword" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full px-3 md:px-4 py-2 text-sm md:text-base border rounded-lg bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2409,6 +2542,149 @@
         </div>
     </div>
 
+    <!-- MODAL DETALLE DE CORTE / HISTÓRICO -->
+    <div v-if="finance.showShiftDetailModal.value" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="finance.showShiftDetailModal.value = false"></div>
+        <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+            
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
+                <div>
+                    <h3 class="text-xl font-black dark:text-white">Detalle de Corte de Caja</h3>
+                    <p class="text-sm text-slate-500" v-if="finance.selectedShift.value">
+                        Abierto: {{ new Date(finance.selectedShift.value.startTime).toLocaleString() }}
+                        <span v-if="finance.selectedShift.value.endTime"> | Cerrado: {{ new Date(finance.selectedShift.value.endTime).toLocaleString() }}</span>
+                    </p>
+                </div>
+                <button @click="finance.showShiftDetailModal.value = false" class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto thin-scroll" v-if="finance.selectedShift.value">
+                
+                <!-- Resumen Superior (Tarjetas) -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <span class="block text-xs font-bold uppercase text-slate-400 mb-1">Fondo Inicial</span>
+                        <span class="block text-xl font-black dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                        <!-- Entradas Manuales -->
+                        <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Entradas (Manual)</span>
+                        <span class="block text-xl font-black text-green-700 dark:text-green-300">
+                            +${{ finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}
+                        </span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                        <!-- Salidas Manuales -->
+                        <span class="block text-xs font-bold uppercase text-red-600 dark:text-red-400 mb-1">Salidas (Manual)</span>
+                        <span class="block text-xl font-black text-red-700 dark:text-red-300">
+                            -${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}
+                        </span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-900 dark:bg-primary text-white">
+                        <span class="block text-xs font-bold uppercase text-white/60 mb-1">Efectivo Final (Real)</span>
+                        <span class="block text-xl font-black">${{ finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '---' }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Desglose Efectivo Calculado -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4 flex items-center gap-2 dark:text-white">
+                            <i class="fa-solid fa-calculator text-primary"></i> Cálculo Sistema (Efectivo)
+                        </h4>
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+                            <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Fondo Inicial</span>
+                                <span class="text-sm font-bold dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
+                            </div>
+                            <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                <span class="text-sm text-slate-600 dark:text-slate-400">Ventas en Efectivo (Calc)</span>
+                                <!-- Ventas Efectivo = Expected - Initial - Ins + Outs -->
+                                <span class="text-sm font-bold dark:text-white">
+                                    ${{ (finance.selectedShift.value.finalCashExpected 
+                                        - finance.selectedShift.value.initialCash 
+                                        - finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0) 
+                                        + finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0)).toFixed(2) 
+                                    }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                <span class="text-sm text-slate-600 dark:text-slate-400 text-green-600">+ Entradas Manuales</span>
+                                <span class="text-sm font-bold text-green-600">+${{ finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                            </div>
+                            <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                <span class="text-sm text-slate-600 dark:text-slate-400 text-red-500">- Salidas Manuales</span>
+                                <span class="text-sm font-bold text-red-500">-${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                            </div>
+                            <div class="flex justify-between p-3 bg-slate-50 dark:bg-slate-700/30">
+                                <span class="text-sm font-bold text-slate-800 dark:text-white">Total Esperado</span>
+                                <span class="text-sm font-bold text-primary">${{ finance.selectedShift.value.finalCashExpected.toFixed(2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desglose de Movimientos Manuales -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4 flex items-center gap-2 dark:text-white">
+                            <i class="fa-solid fa-exchange-alt text-orange-500"></i> Movimientos de Caja
+                        </h4>
+                        
+                        <div v-if="finance.selectedShift.value.movements && finance.selectedShift.value.movements.length > 0" class="space-y-2 max-h-[250px] overflow-y-auto thin-scroll">
+                            <div v-for="(mov, i) in finance.selectedShift.value.movements" :key="i" class="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                                <div>
+                                    <p class="text-sm font-bold dark:text-white">{{ mov.reason }}</p>
+                                    <p class="text-xs text-slate-500">{{ new Date(mov.date || finance.selectedShift.value.startTime).toLocaleTimeString() }}</p>
+                                </div>
+                                <span :class="mov.type === 'in' ? 'text-green-500' : 'text-red-500'" class="font-mono font-bold">
+                                    {{ mov.type === 'in' ? '+' : '-' }}${{ mov.amount.toFixed(2) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                            <p class="text-sm text-slate-400">Sin movimientos manuales registrados.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Balance Final (Footer del reporte) -->
+                <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h4 class="font-bold text-sm uppercase text-slate-500 mb-4">Balance de Cierre</h4>
+                    <div class="flex flex-col md:flex-row gap-4 text-sm">
+                        <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <span class="text-slate-600 dark:text-slate-400">Calculado en Sistema:</span>
+                            <span class="font-bold dark:text-white">${{ finance.selectedShift.value.finalCashExpected ? finance.selectedShift.value.finalCashExpected.toFixed(2) : '0.00' }}</span>
+                        </div>
+                        <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <span class="text-slate-600 dark:text-slate-400">Contado en Caja:</span>
+                            <span class="font-bold dark:text-white">${{ finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '0.00' }}</span>
+                        </div>
+                        <div class="flex-1 flex justify-between items-center p-3 rounded-lg" 
+                            :class="(finance.selectedShift.value.difference || 0) >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                            <span class="font-bold">Diferencia:</span>
+                            <span class="font-black">{{ (finance.selectedShift.value.difference || 0).toFixed(2) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Footer Modal -->
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-end">
+                <!--<button @click="finance.generatePDF(finance.selectedShift.value)" class="mr-3 px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg font-bold transition">
+                    <i class="fa-solid fa-print mr-2"></i> Imprimir Reporte
+                </button>-->
+                <button @click="finance.showShiftDetailModal.value = false" class="px-6 py-2 bg-slate-900 dark:bg-primary text-white font-bold rounded-lg hover:opacity-90 transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL COMPARTIR WHATSAPP -->
     <div v-if="showShareModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all">
         <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-100">
@@ -2512,9 +2788,87 @@
         </div>
     </div>
 
-</div>
+    <!-- MODAL HORARIOS -->
+    <div v-if="showBusinessHoursModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in border dark:border-slate-700">
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Editar Horario: {{ tempBusinessHour.day }}</h3>
+                <button @click="showBusinessHoursModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <!-- Toggle Abierto/Cerrado -->
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <span class="font-bold text-slate-700 dark:text-slate-300">¿Abierto?</span>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" v-model="tempBusinessHour.isOpen" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
 
+                <!-- Selectores de Hora -->
+                <div v-if="tempBusinessHour.isOpen" class="space-y-4 animate-fade-in">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Hora de Apertura</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-clock absolute left-3 top-3 text-slate-400"></i>
+                            <input v-model="tempBusinessHour.open" type="time" class="w-full pl-10 pr-4 py-2 border rounded-lg bg-slate-50 dark:bg-slate-900 dark:border-slate-600 dark:text-white outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Hora de Cierre</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-clock absolute left-3 top-3 text-slate-400"></i>
+                            <input v-model="tempBusinessHour.close" type="time" class="w-full pl-10 pr-4 py-2 border rounded-lg bg-slate-50 dark:bg-slate-900 dark:border-slate-600 dark:text-white outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-center py-6 text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed dark:border-slate-700">
+                    <i class="fa-solid fa-store-slash text-3xl mb-2"></i>
+                    <p>Este día permanecerá cerrado.</p>
+                </div>
+            </div>
+
+            <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+                <button @click="showBusinessHoursModal = false" class="px-5 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold transition">Cancelar</button>
+                <button @click="saveBusinessHours" class="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primaryDark transition shadow-lg">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MAPA (LOCATION PICKER) -->
+    <div v-if="showMapModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white"><i class="fa-solid fa-location-dot text-red-500 mr-2"></i> Seleccionar Ubicación</h3>
+                <button @click="showMapModal = false" class="text-slate-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-slate-800 transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="relative flex-1 bg-slate-100 dark:bg-slate-900 w-full">
+                <div id="map-picker" style="width: 100%; height: 400px;"></div>
+                <div v-if="!mapInstance" class="absolute inset-0 flex items-center justify-center bg-slate-100/80 dark:bg-slate-900/80">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-primary"></i>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 truncate font-mono bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-600">
+                    <i class="fa-solid fa-thumbtack text-primary mr-1"></i> {{ tempAddress || 'Arrastra el marcador...' }}
+                </p>
+                <div class="flex justify-end gap-3">
+                    <button @click="showMapModal = false" class="px-5 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-bold transition">Cancelar</button>
+                    <button @click="confirmLocation" class="px-5 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primaryDark transition shadow-lg flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Confirmar Ubicación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+   
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqYcfefGddEiqR-OlfaLMSWP5m2RdMk18&libraries=places" async defer></script>
     <script src="../assets/js/admin/app.js" type="module" async></script>
 </body>
 </html>

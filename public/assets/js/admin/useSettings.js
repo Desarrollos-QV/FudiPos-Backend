@@ -3,11 +3,13 @@ import { authFetch } from './api.js'; // <-- Helper para Fetch
 
 export function useSettings(auth) {
     const settings = ref({
+        saving: false,
         role: '', // Para saber qué campos mostrar
         appName: '',
         adminName: '',
         address: '',
         plan: 'free',
+        location: { lat: 0, lng: 0 },
         // Campos Negocio
         avatar: '',
         phone: '',
@@ -17,7 +19,14 @@ export function useSettings(auth) {
         currency: 'MXN',
         iva: 0,
         // Categorías seleccionadas por el negocio
-        categories: []
+        categories: [],
+        // Configuraciones de horario y entrega
+        time: '',
+        deliveryType: 'own',
+        deliveryCost: 0,
+        deliveryCost: 0,
+        isOpen: true,
+        businessHours: []
     });
     
     // Agregamos email al estado
@@ -32,7 +41,6 @@ export function useSettings(auth) {
     const avatarInput = ref(null);
 
     const fetchSettings = async () => {
-        settings.value = [];
         // 1. Configuración General (Pública/Global)
         try {
             const res = await authFetch('/api/config/admin');
@@ -42,6 +50,11 @@ export function useSettings(auth) {
                 settings.value = { ...settings.value, ...data };
                 // Asegurar que exista el array de categorias
                 if (!Array.isArray(settings.value.categories)) settings.value.categories = [];
+                // Asegurar horarios
+                if (!settings.value.businessHours || settings.value.businessHours.length === 0) {
+                     const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                     settings.value.businessHours = days.map(d => ({ day: d, isOpen: true, open: '09:00', close: '22:00' }));
+                }
                 console.log("Configuraciones: ", settings.value)
             }
         } catch (e) { console.error(e); }
@@ -96,6 +109,7 @@ export function useSettings(auth) {
                 body: JSON.stringify(settings.value)
             });
             if (res.ok) {
+                saveProfile();
                 toastr.success('Configuración guardada correctamente');
             }
         } catch (e) { toastr.error('Error al guardar'); }
@@ -104,29 +118,32 @@ export function useSettings(auth) {
     const saveProfile = async () => {
         try {
             const token = localStorage.getItem('token');
-            
-            const body = { id: payload.id, username: profile.value.username, email: profile.value.email  };
-            if (profile.value.newPassword) body.password = profile.value.newPassword;
+            if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
 
-            const res = await authFetch('/api/auth/update', {
-                method: 'PUT',
-                body: JSON.stringify(body)
-            });
+                const body = { id: payload.id, username: profile.value.username, email: profile.value.email  };
+                if (profile.value.newPassword) body.password = profile.value.newPassword;
 
-            if (res.ok) {
-                const data = await res.json();
-                toastr.success('Perfil actualizado.');
-                // Actualizar localstorage si cambió el username
-                if(data.user && data.user.username) {
-                    auth.username.value = data.user.username;
-                    toastr.success('Perfil actualizado. Inicia sesión de nuevo.');
-                    localStorage.setItem('username', data.username);
-                    auth.logout();
+                const res = await authFetch('/api/auth/update', {
+                    method: 'PUT',
+                    body: JSON.stringify(body)
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    toastr.success('Perfil actualizado.');
+                    // Actualizar localstorage si cambió el username
+                    if(data.user && data.user.username && auth.username.value != data.user.username ) {
+                        auth.username.value = data.user.username;
+                        toastr.success('Perfil actualizado. Inicia sesión de nuevo.');
+                        localStorage.setItem('username', data.username);
+                        auth.logout();
+                    }
+                    // Limpiar campo password
+                    profile.value.newPassword = '';
+                } else {
+                    throw new Error('Error al actualizar');
                 }
-                // Limpiar campo password
-                profile.value.newPassword = '';
-            } else {
-                throw new Error('Error al actualizar');
             }
         } catch (e) {
             toastr.error(e.message || 'Error al actualizar perfil');

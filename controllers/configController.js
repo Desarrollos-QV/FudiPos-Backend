@@ -67,10 +67,16 @@ exports.getAdminConfig = async (req, res) => {
                 appName: business.name, // El nombre del negocio será el nombre de la App para ellos
                 adminName: req.user.username, // O un campo específico si lo agregas
                 address: business.address || '',
+                location: business.location || {},
                 slug : business.slug || '',
                 urlApp: 'https://'+req.hostname+'/'+business.slug,
                 plan: business.plan || 'free',
                 categories : business.categories,
+                time: business.time,
+                deliveryType: business.deliveryType || 'own',
+                deliveryCost: business.deliveryCost,
+                isOpen: business.isOpen,
+                businessHours: business.businessHours || [],
                 // Campos extra de negocio
                 avatar: business.avatar || '',
                 phone: business.phone || '',
@@ -109,9 +115,13 @@ exports.updateAdminConfig = async (req, res) => {
             if (req.body.avatar) business.avatar = req.body.avatar;
             if (req.body.appName) business.name = req.body.appName;
             if (req.body.address) business.address = req.body.address;
+            if (req.body.location) business.location = req.body.location;
             if (req.body.phone) business.phone = req.body.phone;
+            if (req.body.deliveryType) business.deliveryType = req.body.deliveryType;
+            if (req.body.deliveryCost !== undefined) business.deliveryCost = req.body.deliveryCost;
             if (req.body.ownerEmail) business.ownerEmail = req.body.ownerEmail;
             if (req.body.categories) business.categories = req.body.categories;
+            if (req.body.businessHours) business.businessHours = req.body.businessHours;
             
             // Settings anidados
             if (!business.settings) business.settings = {};

@@ -20,6 +20,16 @@ export function useFinance() {
     const showOpenModal = ref(false);
     const showMovementModal = ref(false);
     const showCloseModal = ref(false);
+    
+    // Detalle de Corte
+    const showShiftDetailModal = ref(false);
+    const selectedShift = ref(null);
+
+    const viewShift = (shift) => {
+        selectedShift.value = shift;
+        console.log(shift);
+        showShiftDetailModal.value = true;
+    };
 
     // Cargar estado inicial
     const fetchCurrentStatus = async () => {
@@ -94,11 +104,62 @@ export function useFinance() {
         } catch (e) { toastr.error('Error al cerrar caja'); }
     };
 
+    const generatePDF = (shift) => {
+        // try {
+            console.log(shift);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // 1. Encabezado
+            doc.setFontSize(16);
+            doc.text('CORTE DE CAJA', 14, 22);
+            doc.setFontSize(10);
+            doc.text(`ID: ${shift._id}`, 14, 28);
+            doc.text(`Fecha: ${new Date(shift.createdAt).toLocaleString()}`, 14, 34);
+            doc.text(`Fondo Inicial: $${shift.initialCash.toFixed(2)}`, 14, 40);
+            // 2. Resumen de Ingresos
+            doc.setFontSize(12);
+            doc.text('INGRESOS', 14, 45);
+            // doc.text(`Ventas en Efectivo: $${shift.cashSales.toFixed(2)}`, 14, 52);
+            doc.text(`Ventas en Efectivo (Calc): $${ (shift.finalCashExpected 
+                                        - shift.initialCash 
+                                        - shift.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0) 
+                                        + shift.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0)).toFixed(2) 
+                                    }`, 14, 52);
+            doc.text(`Entradas Manuales: $${ shift.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }`, 14, 58);
+            doc.text(`Salidas Manuales: $${ shift.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }`, 14, 64);
+            doc.text(`Total Esperado: $${shift.finalCashExpected.toFixed(2)}`, 14, 70);
+            
+            doc.setFontSize(12);
+            doc.setFontSize(12);
+            // 3. Movimientos
+            doc.text('MOVIMIENTOS', 14, 75);
+            if (shift.movements.length === 0) {
+                doc.text('Sin movimientos', 14, 82);
+            } else {
+                shift.movements.forEach((m, i) => {
+                    doc.text(`${m.type === 'in' ? '+' : '-'} $${m.amount} - ${m.reason}`, 14, 88 + (i * 6));
+                });
+            }
+
+            // 4. Cierre
+            doc.text('CIERRE', 14, 88 + (shift.movements.length * 6) + 10);
+            doc.text(`Cajero: ${shift.closedBy.username}`, 14, 94 + (shift.movements.length * 6));
+            doc.text(`Cierre Manual: $${shift.finalCashActual.toFixed(2)}`, 14, 100 + (shift.movements.length * 6));
+
+            // 5. Guardar
+            doc.save(`corte-caja-${shift.id}.pdf`);
+            toastr.success('PDF generado');
+
+        // } catch (e) { toastr.error('Error al generar PDF'); }
+    };
+
     return {
         shiftStatus, currentData, historyList,
         openAmount, movementForm, closeAmount, closeRecounts,
         showOpenModal, showMovementModal, showCloseModal,
+        showShiftDetailModal, selectedShift, viewShift,
         fetchCurrentStatus, fetchHistory,
-        openRegister, registerMovement, closeRegister
+        openRegister, registerMovement, closeRegister, generatePDF
     };
 }

@@ -44,6 +44,49 @@ toastr.options = {
     "timeOut": "3000",
 }
 
+
+// Google Maps Autocomplete Logic
+window.initAutocomplete = function () {
+    const input = document.getElementById('address-input');
+    if (!input) return;
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ["geometry", "name", "formatted_address"],
+        types: ["geocode", "establishment"] // Ajustar según necesidad
+    });
+
+    autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+
+        if (!place.geometry || !place.geometry.location) {
+            console.error("No details available for input: '" + place.name + "'");
+            return;
+        }
+
+        // Obtener la instancia de Vue desde el elemento DOM (Truco si no exponemos la variable global)
+        // O más limpio: Despachar un evento personalizado que Vue escuche
+        const event = new CustomEvent('address-selected', {
+            detail: {
+                address: place.formatted_address || place.name,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            }
+        });
+        window.dispatchEvent(event);
+    });
+};
+
+// Cargar initAutocomplete cuando cargue Google Maps (callback) o si ya cargó
+if (window.google && window.google.maps) {
+    window.initAutocomplete();
+} else {
+    // Si usas callback en la URL del script: &callback=initAutocomplete
+    // Si no, esperar a window load o similar.
+    window.addEventListener('load', () => {
+        if (window.google && window.google.maps) window.initAutocomplete();
+    });
+}
+
 createApp({
     setup() {
         // STATE
@@ -52,8 +95,8 @@ createApp({
         const currentView = ref(localStorage.getItem('currentView') || 'dashboard');
         // Simular rol (en producción viene del token JWT decodificado)
         const currentUserRole = ref('admin_negocio'); // Cambia a 'superadmin' para probar la otra vista
-        
-        const availableCategories = ref([
+
+        const availableCategoriesStore = ref([
             { id: 'burgers', name: 'Hamburguesas', emoji: '🍔' },
             { id: 'pizza', name: 'Pizza', emoji: '🍕' },
             { id: 'sushi', name: 'Sushi', emoji: '🍣' },
@@ -90,7 +133,7 @@ createApp({
         const orders = useOrders();
         const quotes = useQuotes(settings);
         const kds = useKds();
- 
+
         const saasMenu = ref([
             { id: 100, label: 'Clientes / Negocios', icon: 'fa-solid fa-building-user', view: 'saas_clients' },
             { id: 102, label: 'Publicidad Global', icon: 'fa-solid fa-globe', view: 'ads' },
@@ -145,7 +188,24 @@ createApp({
                 get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
             },
             { id: 3, label: 'KDS Cocina', icon: 'fa-solid fa-fire-burner', view: 'kds' }, // Nuevo Item
-            { id: 12, label: 'Caja', icon: 'fa-solid fa-box', view: 'finance', get locked() { return (settings.settings.value.plan == 'free') ? true : false; } },
+            // { id: 12, label: 'Caja', icon: 'fa-solid fa-box', view: 'finance', get locked() { return (settings.settings.value.plan == 'free') ? true : false; } },
+            {
+                id: 9,
+                label: 'Caja',
+                icon: 'fa-solid fa-box',
+                expanded: false,
+                children: [
+                    {
+                        id: 10, label: 'Caja Actual', view: 'finance',
+                        get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
+                    },
+                    {
+                        id: 11, label: 'Historial de Cajas', view: 'finance_history',
+                        get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
+                    }
+                ],
+                get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
+            },
             { id: 13, label: 'Usuarios', icon: 'fa-solid fa-user-group', view: 'users' },
             { id: 14, label: 'Configuración', icon: 'fa-solid fa-gear', view: 'settings' }
         ]);
@@ -160,33 +220,20 @@ createApp({
                 // Agregar si no existe
                 settings.settings.value.categories.push(id);
             }
-
-            console.log(settings.settings.value.categories);
         };
 
-
-        // Computada para decidir qué menú mostrar
-        const activeMenuItems = computed(() => {
-            return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
-        });
-
-        // --- LÓGICA LOCAL PARA MODAL DETALLE ITEM ---
-        const showItemDetailsModal = ref(false);
-        const selectedCartItem = ref(null);
-
-
-        // --- DATA TABLE PRODUCTS ---
-        let dataTable = null;
-        const initDataTable = () => {
-            if (dataTable) {
-                dataTable.destroy();
+        
+        let productsDataTable = null;
+        const initProductsTable = () => {
+            if (productsDataTable) {
+                productsDataTable.destroy();
             }
 
             // Esperamos que el DOM esté listo
             nextTick(() => {
                 if (!document.getElementById('productsTable')) return;
 
-                dataTable = $('#productsTable').DataTable({
+                productsDataTable = $('#productsTable').DataTable({
                     data: products.products.value, // Datos de Vue
                     responsive: true,
                     language: { url: "/es-ES.json" }, // Español
@@ -197,7 +244,14 @@ createApp({
                         },
                         {
                             data: 'name',
-                            render: (data, type, row) => `<div><div class="font-bold text-slate-800 dark:text-white">${data}</div><div class="text-xs text-slate-500">${row.description || ''}</div></div>`
+                            render: (data, type, row) => `<div>
+                                <div class="font-bold text-slate-800 dark:text-white">
+                                    ${data}
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    ${row.description.substring(0, 20) + '...'}
+                                </div>
+                            </div>`
                         },
                         { data: 'price', render: (data) => `<span class="font-bold">$${data}</span>` },
                         {
@@ -231,7 +285,7 @@ createApp({
         };
 
         watch(products.products, () => {
-            if (currentView.value === 'products') initDataTable();
+            if (currentView.value === 'products') initProductsTable();
         });
 
         $(document).on('click', '.btn-edit', function () {
@@ -250,6 +304,133 @@ createApp({
             const prod = products.products.value.find(p => p._id === id);
             products.toggleTrending(prod);
         });
+
+        // Listener para Google Maps Event (Desde fuera de Vue)
+        const updateAddressFromMap = (e) => {
+            const { address, lat, lng } = e.detail;
+            settings.settings.value.address = address;
+            // Asegurar objeto location
+            if (!settings.settings.value.location) settings.settings.value.location = {};
+
+            settings.settings.value.location.lat = lat;
+            settings.settings.value.location.lng = lng;
+
+            // Opcional: Feedback visual
+            toastr.info('Ubicación actualizada');
+        };
+
+        onMounted(() => {
+            window.addEventListener('address-selected', updateAddressFromMap);
+            // Reintento de init si Vue carga después de window load
+            //  if(window.initAutocomplete) window.initAutocomplete();
+        });
+
+
+        // Computada para decidir qué menú mostrar
+        const activeMenuItems = computed(() => {
+            return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
+        });
+
+        // Watcher global para vistas que requieren inicialización DOM
+        watch(currentView, (newVal) => {
+            if (newVal === 'settings') {
+                nextTick(() => {
+                    if (window.initAutocomplete) window.initAutocomplete();
+                });
+            }
+        });
+
+        // --- LOGICA MAP PICKER ---
+        const showMapModal = ref(false);
+        const mapInstance = ref(null);
+        const markerInstance = ref(null);
+        const tempAddress = ref('');
+        const tempLocation = ref({ lat: 0, lng: 0 });
+
+        const openMapModal = () => {
+            showMapModal.value = true;
+            mapInstance.value = null; // Resetear para forzar nueva instancia al reabrir (por v-if)
+            markerInstance.value = null;
+            // Delay para que el modal renderice el div #map-picker
+            setTimeout(() => {
+                initMapPicker();
+            }, 200);
+        };
+
+        const initMapPicker = () => {
+            const defaultLat = settings.settings.value.location?.lat || 19.432608; // CDMX Default
+            const defaultLng = settings.settings.value.location?.lng || -99.133209;
+            const center = { lat: parseFloat(defaultLat), lng: parseFloat(defaultLng) };
+
+            tempLocation.value = center;
+            tempAddress.value = settings.settings.value.address || '';
+
+            if (!mapInstance.value) {
+                const mapEl = document.getElementById('map-picker');
+                if (!mapEl || !window.google) return;
+
+                mapInstance.value = new google.maps.Map(mapEl, {
+                    center: center,
+                    zoom: 15,
+                    streetViewControl: false,
+                    mapTypeControl: false
+                });
+
+                markerInstance.value = new google.maps.Marker({
+                    position: center,
+                    map: mapInstance.value,
+                    draggable: true,
+                    animation: google.maps.Animation.DROP,
+                    icon: '/assets/images/marker_maps.png'
+                });
+
+                // Listeners
+                markerInstance.value.addListener('dragend', () => {
+                    const position = markerInstance.value.getPosition();
+                    tempLocation.value = { lat: position.lat(), lng: position.lng() };
+                    geocodePosition(position);
+                });
+
+                mapInstance.value.addListener('click', (e) => {
+                    markerInstance.value.setPosition(e.latLng);
+                    tempLocation.value = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                    geocodePosition(e.latLng);
+                });
+
+            } else {
+                // Re-centrar si ya existe
+                google.maps.event.trigger(mapInstance.value, 'resize');
+                mapInstance.value.setCenter(center);
+                markerInstance.value.setPosition(center);
+            }
+        };
+
+        const geocodePosition = (latLng) => {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: latLng }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    tempAddress.value = results[0].formatted_address;
+                } else {
+                    tempAddress.value = 'Dirección no encontrada';
+                }
+            });
+        };
+
+        const confirmLocation = () => {
+            settings.settings.value.address = tempAddress.value;
+            // Asegurar location
+            if (!settings.settings.value.location) settings.settings.value.location = {};
+
+            settings.settings.value.location.lat = tempLocation.value.lat;
+            settings.settings.value.location.lng = tempLocation.value.lng;
+
+            showMapModal.value = false;
+            toastr.success('Ubicación actualizada desde el mapa');
+        };
+
+        // --- LÓGICA LOCAL PARA MODAL DETALLE ITEM ---
+        const showItemDetailsModal = ref(false);
+        const selectedCartItem = ref(null);
 
         // DATATABLE DE USUARIOS
         let usersTable = null;
@@ -335,7 +516,6 @@ createApp({
         watch(orders.ordersList, () => { if (currentView.value === 'orders') initOrdersTable(); });
 
         const viewListOrders = () => {
-            console.log("Reiniciamos...")
             orders.fetchOrders();
             initOrdersTable(); //<-- Inicializamos de nuevo
             currentView.value = 'orders';
@@ -801,61 +981,75 @@ createApp({
                 });
 
                 if (!res.ok) throw new Error('Error al guardar la cotizacion');
-                quotes.isEditing.value = false;
-                quotes.fetchQuotes(); // <-- Recargamos la data
-                toastr.success('Cotización registrada correctamente');
-                currentView.value = 'quotes';
+                toastr.success('Cotización guardada');
+                quotes.fetchQuotes(); // Recargar lista
+                viewListQuotes(); // Volver al listado
             } catch (error) {
-                toastr.error(error.message);
+                Swal.fire('Error', error.message, 'error');
             }
-
-        };
-
-        const convertQuoteToSale = () => {
-
-            if (!quotes.clientSearch.value) return Swal.fire('Falta información', 'Ingresa el nombre del cliente', 'warning');
-            if (quotes.form.items.length === 0) return Swal.fire('Vacío', 'Agrega productos a la cotización', 'warning');
-
-            const items = quotes.form.items;
-            if (items.length === 0) return Swal.fire('Error', 'La cotización está vacía', 'warning');
-            Swal.fire({
-                title: '¿Generar Venta?',
-                text: "Una vez generada la venta esta cotización sera cerrada!!.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, Generar'
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    try {
-                        // Aplicamos el carrito
-                        pos.activeTab.value.cart = JSON.parse(JSON.stringify(items));
-                        // Aplicamops el descuento
-                        pos.activeTab.value.discount.amount = quotes.form.discount.value;
-                        pos.activeTab.value.discount.reason = quotes.form.discount.title;
-                        pos.activeTab.value.discount.type = quotes.form.discount.type;
-                        // Aplicamos el usuario
-                        pos.selectCustomer(quotes.form.client);
-                        // Eliminamos solo si ya es una quote guardada...
-                        if (quotes.isEditing.value) {
-                            quotes.form.status = 'ready'; // <-- Marcamos como lista
-                            const res = await authFetch(`/api/quotes/${quotes.form._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(quotes.form) });
-                            if (!res.ok) throw new Error('Error al guardar la cotizacion');
-                            if (res.ok) { toastr.success('Cotización Actualizada con éxito!'); }
-                        }
-                        // Cambiamos vista...
-                        currentView.value = 'pos';
-                        toastr.success('Productos cargados al POS');
-                    } catch (e) { toastr.error('Error'); }
-                }
-            });
         };
 
         const viewListQuotes = () => {
-            quotes.fetchQuotes(); // <-- Reiniciamos data
-            initQuotesTable(); // <-- Reinicializamos la datatable
-            currentView.value = 'quotes'; // <-- Cambiamos de vista
+            currentView.value = 'quotes';
+            initQuotesTable();
+        };
+
+        const convertQuoteToSale = async () => {
+            try {
+                // 1. Crear Orden
+                const res = await authFetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: quotes.form.items.map(i => ({
+                            ...i,
+                            productId: i._id, // Map ID correctly
+                            quantity: i.qty   // Map quantity
+                        })),
+                        customerId: quotes.form.customerId ? quotes.form.customerId._id : null,
+                        paymentMethod: 'cash', // Default payload
+                        source: 'pos',
+                        subtotal: quotes.totals.value.subtotal,
+                        // ... more logic if needed
+                    })
+                });
+
+                if (res.ok) {
+                    // 2. Marcar cotizacion como completed
+                    quotes.form.status = 'ready';
+                    await saveQuote();
+                    toastr.success('Cotización convertida en venta (Pendiente de pago en Caja)');
+                }
+            } catch (e) {
+                console.error(e);
+                toastr.error("Error al convertir");
+            }
         }
 
+
+        // --- LOGICA HORARIOS (BUSINESS HOURS) ---
+        const showBusinessHoursModal = ref(false);
+        const tempBusinessHour = ref({});
+        const currentDayIndex = ref(-1);
+
+        const openBusinessHoursModal = (index) => {
+            // Copia profunda para editar sin modificar reactivamente directo
+            tempBusinessHour.value = JSON.parse(JSON.stringify(settings.settings.value.businessHours[index]));
+            currentDayIndex.value = index;
+            showBusinessHoursModal.value = true;
+        };
+
+        const saveBusinessHours = async () => {
+            if (currentDayIndex.value !== -1) {
+                // Actualizar el array local
+                settings.settings.value.businessHours[currentDayIndex.value] = tempBusinessHour.value;
+                // Guardar todo
+                await settings.saveSettings();
+                showBusinessHoursModal.value = false;
+            }
+        };
+
+        // --- LOGICA DESCUENTOS (DISCOUNTS) ---
         const showDiscountModal = ref(false);
         const tempDiscount = reactive({ type: 'amount', value: 0, title: '' });
 
@@ -873,7 +1067,7 @@ createApp({
             showDiscountModal.value = false;
         };
 
-        // 4. COMPARTIR WHATSAPP
+        // --- COMPARTIR WHATSAPP ---
         const showShareModal = ref(false);
         const sharePhone = ref('');
         const sharePrefix = ref('52'); // Default México
@@ -935,7 +1129,7 @@ createApp({
                     // Buscar la última orden para imprimir su ticket
                     await orders.fetchOrders();
                     const lastOrder = orders.ordersList.value[0];
-                    
+
                     if (lastOrder) {
                         ticketData.value = {
                             folio: lastOrder._id.slice(-6).toUpperCase(),
@@ -971,7 +1165,7 @@ createApp({
                     if (currentView.value === 'saas_clients') saas.fetchBusinesses();
                     if (currentView.value === 'ads') banners.fetchBanners();
                     if (currentView.value === 'media') media.fetchMedia();
-                    if (currentView.value === 'settings') settings.fetchSettings(); 
+                    if (currentView.value === 'settings') settings.fetchSettings();
                 } else {
                     // Si la URL es solo /admin, vamos al dashboard
                     if (path.endsWith('/admin') || path.endsWith('/admin/')) {
@@ -1014,8 +1208,8 @@ createApp({
                                     };
                                 }
                             }
-                        }  
-                        
+                        }
+
 
                         // Cargar datos iniciales de negocio
                         if (currentView.value === 'pos') {
@@ -1032,7 +1226,11 @@ createApp({
                         if (currentView.value === 'media') media.fetchMedia();
                         if (currentView.value === 'ads') { banners.isUploadingBanner.value = false; banners.fetchBanners(); }
                         if (currentView.value === 'loyalty') useloyalty.fetchProgram();
-                        if (currentView.value === 'products') products.isUploadingProductImg.value = false; products.fetchProducts();
+                        if (currentView.value === 'products') {
+                            products.isUploadingProductImg.value = false;
+                            products.fetchProducts();
+                            initProductsTable();
+                        }
                         if (currentView.value === 'addons') addons.fetchAddons();
                         if (currentView.value === 'categories') categories.isUploadingCatImg.value = false; categories.fetchCategories();
                         if (currentView.value === 'orders') orders.fetchOrders();
@@ -1042,7 +1240,7 @@ createApp({
                         }
                         if (currentView.value === 'users') users.fetchUsers();
                         if (currentView.value === 'settings') {
-                            settings.fetchSettings(); 
+                            settings.fetchSettings();
                         }
                         if (currentView.value === 'quotes') quotes.fetchQuotes();
                         if (currentView.value === 'kds') {
@@ -1059,7 +1257,7 @@ createApp({
                 }
             }
         });
- 
+
 
         // 4. MANEJAR BOTÓN "ATRÁS" DEL NAVEGADOR
         window.onpopstate = (event) => {
@@ -1085,6 +1283,7 @@ createApp({
             collapsed, mobileMenuOpen, currentView,
             activeMenuItems, currentUserRole,
             openPWA,
+            availableCategoriesStore, toggleCategory,
             toggleSidebar, navigate, toggleSubmenu,
             ...analytics, // Analitica general
             ...settings, // Configuraciones
@@ -1098,7 +1297,7 @@ createApp({
             ...useloyalty, // Loyalty
             kds, // KDS Expuesto
             // POS
-            pos, showItemDetailsModal, selectedCartItem, openItemDetails,
+            pos, showItemDetailsModal, selectedCartItem, openItemDetails,finishSale,
             selectedItemAddonGroups, selectedItemUnitPrice, toggleAddonOption, isOptionSelected,
             users,
             finance, closeFinanceShift, // Exportar
@@ -1112,8 +1311,10 @@ createApp({
             showShareModal, sharePhone, sharePrefix, openShareModal, confirmShare,
             showDiscountModal, tempDiscount, openDiscountModal, confirmDiscount,
             // Impresion de Tickets
-            showTicketModal, ticketData, openTicketPreview, printTicketNow, finishSale,
-            availableCategories, toggleCategory,
+            showTicketModal, ticketData, openTicketPreview, printTicketNow,            // Horarios
+            showBusinessHoursModal, tempBusinessHour, openBusinessHoursModal, saveBusinessHours,
+            // Map Picker
+            showMapModal, mapInstance, tempAddress, openMapModal, confirmLocation
         };
     }
 }).mount('#app');
