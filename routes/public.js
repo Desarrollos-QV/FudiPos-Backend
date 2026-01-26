@@ -16,5 +16,8 @@ router.get('/:type', publicMenuController.getPublicData);
 // Ruta para registrar negocio
 router.post('/register', publicMenuController.registerBusiness);
 
+// Ruta para obtener configuración pública (.env)
+router.get('/config/env', publicMenuController.getPublicConfig);
+
 
 module.exports = router;

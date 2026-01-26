@@ -24,7 +24,7 @@ exports.createCheckoutSession = async (req, res) => {
             client_reference_id: idUsuario, 
             // Redirigimos a una URL que ejecutará la verificación
             success_url: `${req.protocol}://${req.get('host')}/api/subscriptions/verify-payment?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.protocol}://${req.get('host')}/admin?payment=cancelled`,
+            cancel_url: `${req.protocol}://${req.get('host')}/api/subscriptions/cancelled-payment?payment=cancelled`,
         });
 
         res.json({ id: session.id });
@@ -74,4 +74,17 @@ exports.verifyPayment = async (req, res) => {
         console.error("Error verificando pago:", error);
         return res.redirect('/admin?error=verification_failed');
     }
+};
+
+exports.cancelledPayment = (req, res) => {
+    // Aca el pago ha sido cancelado necesitamos cerrar la sesion del usuario
+    // Enviamos un pequeño script para limpiar el localStorage en el cliente y luego redirigir
+    res.send(`
+        <script>
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            localStorage.removeItem('user');
+            window.location.href = '/admin?payment=cancelled';
+        </script>
+    `);
 };

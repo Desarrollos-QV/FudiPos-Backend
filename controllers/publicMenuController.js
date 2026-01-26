@@ -123,7 +123,7 @@ exports.registerBusiness = async (req, res) => {
             name: businessName,
             slug: slug,
             plan: 'free',
-            active: true,
+            active: false,
             categories
         });
         const savedBusiness = await newBusiness.save();
@@ -158,6 +158,18 @@ exports.registerBusiness = async (req, res) => {
             user: newUser
         });
 
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- FUNCIÓN PARA OBTENER CONFIGURACIÓN PÚBLICA (Stripe, etc.) ---
+exports.getPublicConfig = async (req, res) => {
+    try {
+        res.json({
+            stripePublicKey: process.env.STRIPE_PUBLIC_KEY,
+            stripePendingPlanId: process.env.STRIPE_PENDING_PLAN_ID
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

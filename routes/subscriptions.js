@@ -9,4 +9,7 @@ router.post('/create-checkout-session', subscriptionController.createCheckoutSes
 // Verificar pago (llamado por Stripe success_url)
 router.get('/verify-payment', subscriptionController.verifyPayment);
 
+// Cancelar pago (llamado por Stripe cancel_url)
+router.get('/cancelled-payment', subscriptionController.cancelledPayment);
+
 module.exports = router;

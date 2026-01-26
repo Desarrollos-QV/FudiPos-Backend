@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Business = require('../models/Business');
 const jwt = require('jsonwebtoken');
 
 const SECRET_KEY = process.env.JWT_SECRET; 
@@ -71,6 +72,10 @@ exports.login = async (req, res) => {
         // 2. Verificar contraseña
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(401).json({ message: 'Credenciales inválidas' });
+
+        // 3. Verificamos si el status del negocio es activo
+        const business = await Business.findOne({ _id: user.businessId });
+        if (!business.active) return res.status(401).json({ message: 'Tu negocio no está activo' });
 
         // 3. Generar Token
         const token = jwt.sign(

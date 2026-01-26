@@ -157,8 +157,29 @@
         }
 
         // --- 2. LÓGICA DE REGISTRO ---
-        const stripe = Stripe('pk_test_51SpiMNAq05U96NcJQ2ft0yGJP0Uslyz4bCaczzPTxFgZf1PVPNofPJD6kb6zbOACdnOGegAAnN6008QvrknCzwBX002oxREaIw');
-        const pendingPlan = "price_1SplSvAq05U96NcJ0V1KeSwL";
+        let stripe;
+        let pendingPlan;
+
+        // Cargar configuración desde el .env a través del backend
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/public/config/env');
+                const config = await res.json();
+                
+                if (config.stripePublicKey) {
+                    stripe = Stripe(config.stripePublicKey);
+                    pendingPlan = config.stripePendingPlanId;
+                    console.log("Configuración cargada correctamente");
+                } else {
+                    throw new Error("No se pudo obtener la configuración de Stripe");
+                }
+            } catch (error) {
+                console.error("Error cargando configuración:", error);
+                toastr.error("Error al inicializar el sistema de pagos.");
+            }
+        }
+
+        loadConfig();
 
         document.getElementById('plan-banner').classList.remove('hidden');
         document.getElementById('btn-submit').innerText = "Registrarse y Pagar";
