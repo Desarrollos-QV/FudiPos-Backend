@@ -138,7 +138,7 @@ createApp({
         const staff = useStaff();
 
         const saasMenu = ref([
-            { id: 100, label: 'Clientes / Negocios', icon: 'fa-solid fa-building-user', view: 'saas_clients' },
+            { id: 100, label: 'Clientes / Negocios', icon: 'fa-solid fa-building-user', view: 'saas_clients', roles: ['superadmin'] },
             { id: 102, label: 'Publicidad Global', icon: 'fa-solid fa-globe', view: 'ads' },
             { id: 102, label: 'Galería Global', icon: 'fa-solid fa-images', view: 'media' },
             { id: 103, label: 'Configuración', icon: 'fa-solid fa-gear', view: 'settings' }
@@ -223,6 +223,26 @@ createApp({
             { id: 14, label: 'Equipo y Roles', icon: 'fa-solid fa-users-gear', view: 'staff', section: 'management', roles: ['admin_negocio','admin'] },
             { id: 15, label: 'Configuración', icon: 'fa-solid fa-gear', view: 'settings', section: 'config', roles: ['admin_negocio','admin'] }
         ]);
+
+        // Computada para decidir qué menú mostrar
+        // const activeMenuItems = computed(() => {
+        //     return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
+        // });
+        // --- FILTRADO AUTOMÁTICO SEGÚN ROL ---
+        const activeMenuItems = computed(() => {
+            // Si no hay usuario cargado aún, o no tiene rol, asumimos 'admin' si es el dueño inicial
+            // o bloqueamos todo. Aquí uso 'admin' como fallback para pruebas, pero en prod debería ser estricto.
+            if(currentUserRole.value === 'superadmin') {
+                return saasMenu.value;
+            }else {
+                return businessMenu.value.filter(item => {
+                    // Si el item no tiene roles definidos, es público para todos los logueados
+                    if (!item.roles) return true;
+                    return item.roles.includes(currentUserRole.value);
+                });
+            }
+        });
+
 
 
         // Lógica de Toggle
@@ -333,26 +353,7 @@ createApp({
             toastr.info('Ubicación actualizada');
         };
 
-        // Computada para decidir qué menú mostrar
-        // const activeMenuItems = computed(() => {
-        //     return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
-        // });
-        // --- FILTRADO AUTOMÁTICO SEGÚN ROL ---
-        const activeMenuItems = computed(() => {
-            // Si no hay usuario cargado aún, o no tiene rol, asumimos 'admin' si es el dueño inicial
-            // o bloqueamos todo. Aquí uso 'admin' como fallback para pruebas, pero en prod debería ser estricto.
-            if(currentUserRole.value === 'superadmin') {
-                saasMenu.value
-            }else {
-                return businessMenu.value.filter(item => {
-                    // Si el item no tiene roles definidos, es público para todos los logueados
-                    if (!item.roles) return true;
-                    return item.roles.includes(currentUserRole.value);
-                });
-            }
-        });
-
-
+       
         // Watcher global para vistas que requieren inicialización DOM
         watch(currentView, (newVal) => {
             if (newVal === 'settings') {

@@ -75,7 +75,7 @@ exports.login = async (req, res) => {
 
         // 3. Verificamos si el status del negocio es activo
         const business = await Business.findOne({ _id: user.businessId });
-        if (!business.active) return res.status(401).json({ message: 'Tu negocio no está activo' });
+        if (business && !business.active) return res.status(401).json({ message: 'Tu negocio no está activo' });
 
         // 3. Generar Token
         const token = jwt.sign(
