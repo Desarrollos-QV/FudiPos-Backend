@@ -1,6 +1,5 @@
 import { createApp, ref, onMounted, computed, watch, nextTick, reactive } from 'vue';
-import { authFetch } from './api.js'; // <-- Helper para Fetch
-const Swal = window.Swal;
+import { authFetch } from './api.js';
 import { useAuth } from './useAuth.js';
 import { useMedia } from './useMedia.js';
 import { useBanners } from './useBanners.js';
@@ -17,6 +16,10 @@ import { useFinance } from './useFinance.js';
 import { useOrders } from './useOrders.js';
 import { useQuotes } from './useQuotes.js';
 import { useKds } from './useKds.js';
+import { useStaff } from './useStaff.js';
+
+
+const Swal = window.Swal;
 
 // Configuracion de Tailwind
 tailwind.config = {
@@ -36,6 +39,7 @@ tailwind.config = {
         }
     }
 }
+
 // Configuración Global de Toastr
 toastr.options = {
     "closeButton": true,
@@ -43,7 +47,6 @@ toastr.options = {
     "positionClass": "toast-bottom-right", // Abajo a la derecha
     "timeOut": "3000",
 }
-
 
 // Google Maps Autocomplete Logic
 window.initAutocomplete = function () {
@@ -89,12 +92,11 @@ if (window.google && window.google.maps) {
 
 createApp({
     setup() {
-        // STATE
+
         const collapsed = ref(false);
         const mobileMenuOpen = ref(false);
         const currentView = ref(localStorage.getItem('currentView') || 'dashboard');
-        // Simular rol (en producción viene del token JWT decodificado)
-        const currentUserRole = ref('admin_negocio'); // Cambia a 'superadmin' para probar la otra vista
+        const currentUserRole = ref('admin_negocio');
 
         const availableCategoriesStore = ref([
             { id: 'burgers', name: 'Hamburguesas', emoji: '🍔' },
@@ -133,6 +135,7 @@ createApp({
         const orders = useOrders();
         const quotes = useQuotes(settings);
         const kds = useKds();
+        const staff = useStaff();
 
         const saasMenu = ref([
             { id: 100, label: 'Clientes / Negocios', icon: 'fa-solid fa-building-user', view: 'saas_clients' },
@@ -142,14 +145,17 @@ createApp({
         ]);
 
         const businessMenu = ref([
-            { id: 1, label: 'Dashboard', icon: 'fa-solid fa-chart-pie', view: 'dashboard' },
-            { id: 2, label: 'Medios', icon: 'fa-solid fa-images', view: 'media' },
+            { id: 0, label: 'Punto de venta', icon: 'fa-solid fa-cash-register', view: 'pos' ,section: 'main', roles: ['cashier'] },
+            { id: 1, label: 'Dashboard', icon: 'fa-solid fa-chart-pie', view: 'dashboard' ,section: 'main', roles: ['admin_negocio','admin', 'manager'] },
+            { id: 2, label: 'Medios', icon: 'fa-solid fa-images', view: 'media', section: 'main', roles: ['admin_negocio','admin', 'manager'] },
             // PUBLICIDAD CONDICIONAL
             {
                 id: 3,
                 label: 'Publicidad',
                 icon: 'fa-solid fa-bullhorn',
                 view: 'ads',
+                section: 'management' ,
+                roles: ['admin_negocio','admin', 'manager'],
                 get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
             },
             {
@@ -157,6 +163,8 @@ createApp({
                 label: 'Lealtad',
                 icon: 'fa-solid fa-gift',
                 view: 'loyalty',
+                section: 'management' ,
+                roles: ['admin_negocio','admin', 'manager'],
                 get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
             },
             {
@@ -164,6 +172,8 @@ createApp({
                 label: 'Productos',
                 icon: 'fa-solid fa-burger',
                 expanded: false,
+                section: 'management',
+                roles: ['admin_negocio','admin', 'manager'],
                 children: [
                     { id: 6, label: 'Listado', view: 'products' },
                     { id: 7, label: 'Complementos', view: 'addons' },
@@ -175,6 +185,8 @@ createApp({
                 label: 'Ventas',
                 icon: 'fa-solid fa-receipt',
                 expanded: false,
+                section: 'management',
+                roles: ['admin_negocio','admin', 'manager'],
                 children: [
                     {
                         id: 10, label: 'Historial', view: 'orders',
@@ -187,13 +199,14 @@ createApp({
                 ],
                 get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
             },
-            { id: 3, label: 'KDS Cocina', icon: 'fa-solid fa-fire-burner', view: 'kds' }, // Nuevo Item
-            // { id: 12, label: 'Caja', icon: 'fa-solid fa-box', view: 'finance', get locked() { return (settings.settings.value.plan == 'free') ? true : false; } },
+            { id: 3, label: 'KDS Cocina', icon: 'fa-solid fa-fire-burner', view: 'kds', section: 'ops',roles: ['admin_negocio','cook'] }, // Nuevo Item
             {
                 id: 9,
                 label: 'Caja',
                 icon: 'fa-solid fa-box',
                 expanded: false,
+                section: 'management',
+                roles: ['admin_negocio','admin', 'manager'],
                 children: [
                     {
                         id: 10, label: 'Caja Actual', view: 'finance',
@@ -206,8 +219,9 @@ createApp({
                 ],
                 get locked() { return (settings.settings.value.plan == 'free') ? true : false; }
             },
-            { id: 13, label: 'Usuarios', icon: 'fa-solid fa-user-group', view: 'users' },
-            { id: 14, label: 'Configuración', icon: 'fa-solid fa-gear', view: 'settings' }
+            { id: 13, label: 'Usuarios', icon: 'fa-solid fa-user-group', view: 'users', section: 'management', roles: ['admin_negocio','admin'] },
+            { id: 14, label: 'Equipo y Roles', icon: 'fa-solid fa-users-gear', view: 'staff', section: 'management', roles: ['admin_negocio','admin'] },
+            { id: 15, label: 'Configuración', icon: 'fa-solid fa-gear', view: 'settings', section: 'config', roles: ['admin_negocio','admin'] }
         ]);
 
 
@@ -319,17 +333,25 @@ createApp({
             toastr.info('Ubicación actualizada');
         };
 
-        onMounted(() => {
-            window.addEventListener('address-selected', updateAddressFromMap);
-            // Reintento de init si Vue carga después de window load
-            //  if(window.initAutocomplete) window.initAutocomplete();
-        });
-
-
         // Computada para decidir qué menú mostrar
+        // const activeMenuItems = computed(() => {
+        //     return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
+        // });
+        // --- FILTRADO AUTOMÁTICO SEGÚN ROL ---
         const activeMenuItems = computed(() => {
-            return currentUserRole.value === 'superadmin' ? saasMenu.value : businessMenu.value;
+            // Si no hay usuario cargado aún, o no tiene rol, asumimos 'admin' si es el dueño inicial
+            // o bloqueamos todo. Aquí uso 'admin' como fallback para pruebas, pero en prod debería ser estricto.
+            if(currentUserRole.value === 'superadmin') {
+                saasMenu.value
+            }else {
+                return businessMenu.value.filter(item => {
+                    // Si el item no tiene roles definidos, es público para todos los logueados
+                    if (!item.roles) return true;
+                    return item.roles.includes(currentUserRole.value);
+                });
+            }
         });
+
 
         // Watcher global para vistas que requieren inicialización DOM
         watch(currentView, (newVal) => {
@@ -465,7 +487,7 @@ createApp({
             });
         };
 
-        // Watch para recargar tabla cuando cambie la lista
+        // Watch Users
         watch(users.usersList, () => { if (currentView.value === 'users') initUsersTable(); });
 
         // DataTable Orders
@@ -512,12 +534,12 @@ createApp({
             });
         };
 
-        // Watcher
+        // Watcher Orders
         watch(orders.ordersList, () => { if (currentView.value === 'orders') initOrdersTable(); });
 
         const viewListOrders = () => {
             orders.fetchOrders();
-            initOrdersTable(); //<-- Inicializamos de nuevo
+            initOrdersTable();
             currentView.value = 'orders';
         }
 
@@ -568,7 +590,7 @@ createApp({
             });
         };
 
-        // Watcher
+        // Watcher Quotes
         watch(quotes.quotesList, () => { if (currentView.value === 'quotes') initQuotesTable(); });
 
         // --- Interceptamos el login para obtener el rol real
@@ -679,8 +701,13 @@ createApp({
                     finance.fetchHistory();
                 }
                 if (item.view === 'orders') orders.fetchOrders();
-                if (item.view === 'quotes') quotes.fetchQuotes();
+                if (item.view === 'quotes'){
+                    quotes.fetchQuotes();
+                    products.fetchProducts();
+                    users.fetchUsers();
+                }
                 if (item.view === 'kds') kds.startPolling(); // Start polling for KDS
+                if (item.view === 'staff') staff.fetchStaff();
             }
         };
 
@@ -688,7 +715,6 @@ createApp({
             item.expanded = !item.expanded;
             if (collapsed.value) collapsed.value = false;
         };
-
 
         const openItemDetails = (item) => {
             selectedCartItem.value = item;
@@ -742,7 +768,7 @@ createApp({
             return selectedCartItem.value?.selectedOptions?.some(o => o.name === option.name && o.group === group.name);
         };
 
-        // 1. EXPORTAR A EXCEL
+        // EXPORTAR VENTAS A EXCEL
         const downloadSalesExcel = () => {
             if (!orders.ordersList.value || orders.ordersList.value.length === 0) {
                 return Swal.fire('Error', 'No hay datos para exportar', 'warning');
@@ -768,7 +794,7 @@ createApp({
             toastr.success('Reporte descargado correctamente');
         };
 
-        // 2. IMPRIMIR TICKET TÉRMICO (80mm)
+        // IMPRIMIR TICKET TÉRMICO (80mm)
         const printThermalTicket = () => {
             const ord = orders.selectedOrder.value;
             if (!ord) return;
@@ -848,7 +874,7 @@ createApp({
             showTicketModal.value = true;
         };
 
-        // Truco del Iframe invisible para imprimir SIN abrir ventana
+        // Print PDF Ticket
         const printTicketNow = () => {
             // 1. Obtener el HTML limpio del ticket
             const content = document.getElementById('thermal-ticket-content').innerHTML;
@@ -892,7 +918,7 @@ createApp({
             doc.close();
         };
 
-        // 3. GENERAR PDF
+        // GENERAR PDF
         const generatePDF = () => {
             const ord = orders.selectedOrder.value;
             if (!ord) return;
@@ -956,10 +982,10 @@ createApp({
 
         const editQuote = (q) => {
             // Asegurarnos que tenemos los usuarios cargados
-            users.fetchUsers().then(() => {
-                quotes.setClientsDb(users.usersList.value);
-                quotes.setProductsDb(products.products.value);
-                quotes.editQuote(q);
+            users.fetchUsers().then(async () => {
+                await quotes.setClientsDb(users.usersList.value);
+                await quotes.setProductsDb(products.products.value);
+                await quotes.editQuote(q);
                 currentView.value = 'quote_editor';
             });
         };
@@ -994,37 +1020,43 @@ createApp({
             initQuotesTable();
         };
 
-        const convertQuoteToSale = async () => {
-            try {
-                // 1. Crear Orden
-                const res = await authFetch('/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        items: quotes.form.items.map(i => ({
-                            ...i,
-                            productId: i._id, // Map ID correctly
-                            quantity: i.qty   // Map quantity
-                        })),
-                        customerId: quotes.form.customerId ? quotes.form.customerId._id : null,
-                        paymentMethod: 'cash', // Default payload
-                        source: 'pos',
-                        subtotal: quotes.totals.value.subtotal,
-                        // ... more logic if needed
-                    })
-                });
+        const convertQuoteToSale = () => {
+            if (!quotes.clientSearch.value) return Swal.fire('Falta información', 'Ingresa el nombre del cliente', 'warning');
+            if (quotes.form.items.length === 0) return Swal.fire('Vacío', 'Agrega productos a la cotización', 'warning');
 
-                if (res.ok) {
-                    // 2. Marcar cotizacion como completed
-                    quotes.form.status = 'ready';
-                    await saveQuote();
-                    toastr.success('Cotización convertida en venta (Pendiente de pago en Caja)');
+            const items = quotes.form.items;
+            if (items.length === 0) return Swal.fire('Error', 'La cotización está vacía', 'warning');
+            Swal.fire({
+                title: '¿Generar Venta?',
+                text: "Una vez generada la venta esta cotización sera cerrada!!.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, Generar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        // Aplicamos el carrito
+                        pos.activeTab.value.cart = JSON.parse(JSON.stringify(items));
+                        // Aplicamops el descuento
+                        pos.activeTab.value.discount.amount = quotes.form.discount.value;
+                        pos.activeTab.value.discount.reason = quotes.form.discount.title;
+                        pos.activeTab.value.discount.type = quotes.form.discount.type;
+                        // Aplicamos el usuario
+                        pos.selectCustomer(quotes.form.client);
+                        // Eliminamos solo si ya es una quote guardada...
+                        if (quotes.isEditing.value) {
+                            quotes.form.status = 'ready'; // <-- Marcamos como lista
+                            const res = await authFetch(`/api/quotes/${quotes.form._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(quotes.form) });
+                            if (!res.ok) throw new Error('Error al guardar la cotizacion');
+                            if (res.ok) { toastr.success('Cotización Actualizada con éxito!'); }
+                        }
+                        // Cambiamos vista...
+                        currentView.value = 'pos';
+                        toastr.success('Productos cargados al POS');
+                    } catch (e) { toastr.error('Error'); }
                 }
-            } catch (e) {
-                console.error(e);
-                toastr.error("Error al convertir");
-            }
-        }
+            });
+        };
 
 
         // --- LOGICA HORARIOS (BUSINESS HOURS) ---
@@ -1100,10 +1132,21 @@ createApp({
             let msg = '';
             if (shareContext.value === 'ticket') {
                 const ord = orders.selectedOrder.value;
-                const msg = `Hola, aquí tienes el detalle de tu compra en ${settings.settings.value.appName || 'FUDIAPP'}.\nFolio: #${ord._id.slice(-6).toUpperCase()}\nTotal: $${ord.total.toFixed(2)}\nFecha: ${new Date(ord.createdAt).toLocaleDateString()}\nGracias por tu preferencia.`;
+                msg = `Hola, aquí tienes el detalle de tu compra en ${settings.settings.value.appName || 'FudiPos'} | ID #${ord._id.slice(-6)}:\n\n`;
+                ord.items.forEach(i => {
+                    msg += `${i.quantity} x ${i.name} - $${(i.price * i.quantity).toFixed(2)}\n`;
+                });
+
+                if (ord.discount.amount > 0) {
+                    msg += `\nSubtotal: $${ord.subtotal.toFixed(2)}`;
+                    msg += `\nDescuento: -$${ord.discount.amount.toFixed(2)}`;
+                }
+
+                msg += `\n*TOTAL: $${ord.total.toFixed(2)}*\n\n`;
+                msg += `\n** ${settings.settings.value.appName || 'FudiPos'} - Agradece tú preferencia **`;
             } else {
                 // Usar la lógica de mensaje de useQuotes
-                msg = decodeURIComponent(quotes.sendWhatsApp());
+                msg = decodeURIComponent(quotes.sendWhatsApp(settings.settings.value));
             }
 
             const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
@@ -1117,8 +1160,158 @@ createApp({
             finance.closeRecounts.debit = 0;
             finance.closeRecounts.credit = 0;
             finance.closeRecounts.transfer = 0;
+            finance.closeStatusView.value = 'couts'; 
             finance.showCloseModal.value = true;
         }
+
+        // EXPORTAR CIERRE DE CAJA A EXCEL
+        const downloadShiftCloseExcel = () => {
+            if (!finance.selectedShift.value) {
+                return Swal.fire('Error', 'No hay datos para exportar', 'warning');
+            }
+            const shift = finance.selectedShift.value;
+            const wb = XLSX.utils.book_new();
+            const currentDate = new Date();
+            const options = {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            };
+            /** Creamos la tabla */
+            const InnerDiv = document.getElementById('inner-table');
+            // --- RESUMEN DE COSTOS ---
+            const start = new Date(shift.startTime);
+            const end = new Date(shift.endTime);
+            const diffMs = end - start;
+            const hrs = Math.floor(diffMs / 3600000);
+            const mins = Math.floor((diffMs % 3600000) / 60000);
+            const duracionStr = `${hrs}h ${mins}m`; 
+
+            // --- BALANCE DE CAJA ---
+            // Cálculos para Balance de Caja (EFECTIVO)
+            const entries = shift.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0);
+            const exits = shift.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0);
+            const cashSales = (shift.finalCashExpected - shift.initialCash - entries + exits);
+
+            InnerDiv.innerHTML = `<table id="summary_shift" border="1">
+                <thead>
+                    <tr>
+                        <th colspan="8" style="text-align: center;background: #000;display:flex:justify-content:center:align-items:center;">Resumen del Corte</th> 
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Folio</td>
+                        <td>Negocio</td>
+                        <td>Cajero</td>
+                        <td colspan="2">Apertura</td>
+                        <td colspan="2">Cierre</td>
+                        <td colspan="2">Duración del turno</td>
+                    </tr>
+                    <tr>
+                        <td>${shift._id.slice(-6).toUpperCase()}</td>
+                        <td>${settings.settings.value.appName || 'FudiPos'}</td>
+                        <td>${shift.closedBy?.username || 'N/A'}</td>
+                        <td colspan="2">${new Date(shift.startTime).toLocaleString()}</td>
+                        <td colspan="2">${new Date(shift.endTime).toLocaleString()}</td>
+                        <td colspan="2">${duracionStr}</td>
+                    </tr>
+                    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr>
+                        <th colspan="11" style="text-align: center;background: red;">Balance de Caja</th> 
+                    </tr>
+                    <tr>
+                        <td>Fondo inicial</td>
+                        <td colspan="2">+ Ventas en efectivo</td>
+                        <td colspan="2">+ Entradas de efectivo</td>
+                        <td colspan="2">- Salidas de efectivo</td>
+                        <td colspan="2">- Retiros de caja</td>
+                        <td>Contado en caja</td>
+                        <td>Diferencia</td>
+                    </tr>
+                    <tr>
+                        <td>$${shift.initialCash}</td>
+                        <td colspan="2">$${cashSales}</td>
+                        <td colspan="2">$${entries}</td>
+                        <td colspan="2">$${exits}</td>
+                        <td colspan="2">$${shift.cashOut || 0}</td>
+                        <td>$${shift.finalCashActual}</td>
+                        <td>$${shift.difference}</td>
+                    </tr>
+                    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr>
+                        <th colspan="12" style="text-align: center;background: red;">Resumen de ventas</th> 
+                    </tr>
+                    <tr>
+                        <td>Efectivo</td>
+                        <td colspan="2">Tarjeta Crédito</td>
+                        <td colspan="2">Tarjeta Débito</td>
+                        <td colspan="2">Transferencias</td>
+                        <td colspan="2">Ventas Totales</td>
+                        <td>Tickets</td>
+                        <td colspan="2">Ticket Promedio</td>
+                    </tr>
+                    <tr>
+                        <td>$${cashSales}</td>
+                        <td colspan="2">$${shift.totalCreditCard}</td>
+                        <td colspan="2">$${shift.totalDebitCard}</td>
+                        <td colspan="2">$${shift.totalTransfer}</td>
+                        <td colspan="2">$${ (cashSales + shift.totalCreditCard + shift.totalDebitCard + shift.totalTransfer)}</td>
+                        <td>${(shift.totalSalesCash + shift.totalSalesCreditCard + shift.totalSalesDebitCard)}</td>
+                        <td colspan="2">$${((shift.finalCashActual + 
+                            shift.totalDebitCard + 
+                            shift.totalCreditCard + 
+                            shift.totalTransfer) / 
+                            (shift.totalSalesCash + 
+                            shift.totalSalesCreditCard + 
+                            shift.totalSalesDebitCard)).toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>`;
+             
+            const ws1 = XLSX.utils.table_to_sheet(document.getElementById('summary_shift'));
+
+            InnerDiv.innerHTML = `<table id="movements_shift" border="1">
+                <thead>
+                    <tr>
+                        <th colspan="7" style="text-align: center;background: #000;display:flex:justify-content:center:align-items:center;">Movimientos de Caja</th> 
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="2">Hora</td>
+                        <td colspan="2">Tipo</td>
+                        <td colspan="2">Concepto</td>
+                        <td colspan="2">Monto</td>
+                        <td colspan="2">Usuario</td>
+                    </tr>
+                    ${
+                        shift.movements.map(mv => `
+                            <tr>
+                                <td colspan="2">${new Date(mv.date).toTimeString().split(' ')[0]}</td>
+                                <td colspan="2">${mv.type === 'in' ? 'Entrada' : 'Salida'}</td>
+                                <td colspan="2">${mv.reason}</td>
+                                <td colspan="2">$${mv.amount.toFixed(2)}</td>
+                                <td colspan="2">${shift.closedBy?.username || 'FudiPos'}</td>
+                            </tr>
+                        `).join('')
+                    }
+                </tbody>
+            </table>`;
+            
+            const ws2 = XLSX.utils.table_to_sheet(document.getElementById('movements_shift'));
+
+            XLSX.utils.book_append_sheet(wb, ws1, "Resumen del Corte");
+            XLSX.utils.book_append_sheet(wb, ws2, "Movimientos de Caja");
+
+            /* Write the workbook and trigger a download */
+            
+            const formattedDate = currentDate.toLocaleDateString('es-MX', options);
+            XLSX.writeFile(wb, `CorteCaja_${formattedDate}_Caja${shift._id.slice(-8).toUpperCase()}_${shift.closedBy?.username || 'FudiPos'}.xlsx`);
+
+        };
 
         // --- FUNCIÓN: PROCESAR VENTA Y ABRIR TICKET ---
         const finishSale = async () => {
@@ -1144,8 +1337,24 @@ createApp({
             }
         };
 
+        // --- GESTOR DE CAJA ---
+        const viewShiftDetails = async (shift) => {
+            finance.isLoading = true; 
+            finance.selectedShift.value = shift;
+            currentView.value = 'finance_details';
+            finance.isLoading = false;
+        };
+
+        // --- Back To ShiftList ---
+        const backToShiftList = async () => {
+            await finance.fetchHistory();
+            currentView.value = 'finance_history';
+        };
+        
+
         onMounted(async () => {
             auth.checkSession();
+            window.addEventListener('address-selected', updateAddressFromMap);
             const path = window.location.pathname; // Ej: /admin/pos
             // Extraer la última parte de la URL
             const parts = path.split('/').filter(p => p);
@@ -1167,91 +1376,119 @@ createApp({
                     if (currentView.value === 'media') media.fetchMedia();
                     if (currentView.value === 'settings') settings.fetchSettings();
                 } else {
-                    // Si la URL es solo /admin, vamos al dashboard
-                    if (path.endsWith('/admin') || path.endsWith('/admin/')) {
-                        currentView.value = 'dashboard';
-                    } else {
-                        // Buscar si existe una vista con ese nombre
-                        const found = businessMenu.value.find(i => i.view === lastPart);
-
-                        if (lastPart == 'pos') {
-                            if (settings.settings.value.plan == 'free') {
-                                const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3500 });
-                                Toast.fire({ icon: 'error', title: 'Sección Bloqueada', text: "Por favor activa un plan PRO" });
-                                currentView.value = "dashboard";
-                                // 1. CAMBIAR LA URL VISUALMENTE
-                                const newUrl = `/admin/dashboard`;
-                                window.history.pushState({ view: currentView.value }, '', newUrl);
-                            } else {
-                                currentView.value = 'pos';
-                            }
+                    // Validamos si el role es Cajero unicamente vera el POS
+                    if (currentUserRole.value === 'cashier') {
+                        currentView.value = 'pos';
+                        products.fetchProducts();
+                        if (window.innerWidth < 768) {
+                            mobileMenuOpen.value = false;
+                            collapsed.value = false;
                         } else {
-                            if (found) {
-                                if (found.locked == undefined) {
-                                    currentView.value = found.view;
-                                } else {
+                            mobileMenuOpen.value = true;
+                            collapsed.value = true;
+                        }
+                    }else if(currentUserRole.value === 'cook'){
+                        currentView.value = 'kds';
+                        kds.startPolling();
+                        if (window.innerWidth < 768) {
+                            mobileMenuOpen.value = false;
+                            collapsed.value = false;
+                        } else {
+                            mobileMenuOpen.value = true;
+                            collapsed.value = true;
+                        }
+                    } else {
+                        // Si la URL es solo /admin, vamos al dashboard
+                        if (path.endsWith('/admin') || path.endsWith('/admin/')) {
+                            currentView.value = 'dashboard';
+                        } else {
+                            // Buscar si existe una vista con ese nombre
+                            const found = businessMenu.value.find(i => i.view === lastPart);
+
+                            if (lastPart == 'pos') {
+                                if (settings.settings.value.plan == 'free') {
                                     const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3500 });
                                     Toast.fire({ icon: 'error', title: 'Sección Bloqueada', text: "Por favor activa un plan PRO" });
                                     currentView.value = "dashboard";
                                     // 1. CAMBIAR LA URL VISUALMENTE
                                     const newUrl = `/admin/dashboard`;
                                     window.history.pushState({ view: currentView.value }, '', newUrl);
+                                } else {
+                                    currentView.value = 'pos';
                                 }
                             } else {
-                                // Buscamos por children
-                                const childrenFound = businessMenu.value.find(c => c.children && c.children.find(cx => cx.view === lastPart));
-                                if (childrenFound) {
-                                    const child = childrenFound.children.find(cx => cx.view === lastPart);
-                                    if (child) {
-                                        currentView.value = child.view
-                                        toggleSubmenu(childrenFound)
-                                    };
+                                if (found) {
+                                    if (found.locked == undefined) {
+                                        currentView.value = found.view;
+                                    } else {
+                                        const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3500 });
+                                        Toast.fire({ icon: 'error', title: 'Sección Bloqueada', text: "Por favor activa un plan PRO" });
+                                        currentView.value = "dashboard";
+                                        // 1. CAMBIAR LA URL VISUALMENTE
+                                        const newUrl = `/admin/dashboard`;
+                                        window.history.pushState({ view: currentView.value }, '', newUrl);
+                                    }
+                                } else {
+                                    // Buscamos por children
+                                    const childrenFound = businessMenu.value.find(c => c.children && c.children.find(cx => cx.view === lastPart));
+                                    if (childrenFound) {
+                                        const child = childrenFound.children.find(cx => cx.view === lastPart);
+                                        if (child) {
+                                            currentView.value = child.view
+                                            toggleSubmenu(childrenFound)
+                                        };
+                                    }
                                 }
                             }
-                        }
 
 
-                        // Cargar datos iniciales de negocio
-                        if (currentView.value === 'pos') {
-                            products.fetchProducts();
-                            if (window.innerWidth < 768) {
-                                mobileMenuOpen.value = false;
-                                collapsed.value = false;
-                            } else {
-                                mobileMenuOpen.value = true;
-                                collapsed.value = true;
+                            // Cargar datos iniciales de negocio
+                            if (currentView.value === 'pos') {
+                                products.fetchProducts();
+                                if (window.innerWidth < 768) {
+                                    mobileMenuOpen.value = false;
+                                    collapsed.value = false;
+                                } else {
+                                    mobileMenuOpen.value = true;
+                                    collapsed.value = true;
+                                }
                             }
-                        }
-                        if (currentView.value === 'dashboard') analytics.fetchDashboardStats();
-                        if (currentView.value === 'media') media.fetchMedia();
-                        if (currentView.value === 'ads') { banners.isUploadingBanner.value = false; banners.fetchBanners(); }
-                        if (currentView.value === 'loyalty') useloyalty.fetchProgram();
-                        if (currentView.value === 'products') {
-                            products.isUploadingProductImg.value = false;
-                            products.fetchProducts();
-                            initProductsTable();
-                        }
-                        if (currentView.value === 'addons') addons.fetchAddons();
-                        if (currentView.value === 'categories') categories.isUploadingCatImg.value = false; categories.fetchCategories();
-                        if (currentView.value === 'orders') orders.fetchOrders();
-                        if (currentView.value === 'finance') {
-                            finance.fetchCurrentStatus();
-                            finance.fetchHistory();
-                        }
-                        if (currentView.value === 'users') users.fetchUsers();
-                        if (currentView.value === 'settings') {
-                            settings.fetchSettings();
-                        }
-                        if (currentView.value === 'quotes') quotes.fetchQuotes();
-                        if (currentView.value === 'kds') {
-                            kds.startPolling();
-                            if (window.innerWidth < 768) {
-                                mobileMenuOpen.value = false;
-                                collapsed.value = false;
-                            } else {
-                                mobileMenuOpen.value = true;
-                                collapsed.value = true;
+                            if (currentView.value === 'dashboard') analytics.fetchDashboardStats();
+                            if (currentView.value === 'media') media.fetchMedia();
+                            if (currentView.value === 'ads') { banners.isUploadingBanner.value = false; banners.fetchBanners(); }
+                            if (currentView.value === 'loyalty') useloyalty.fetchProgram();
+                            if (currentView.value === 'products') {
+                                products.isUploadingProductImg.value = false;
+                                products.fetchProducts();
+                                initProductsTable();
                             }
+                            if (currentView.value === 'addons') addons.fetchAddons();
+                            if (currentView.value === 'categories') categories.isUploadingCatImg.value = false; categories.fetchCategories();
+                            if (currentView.value === 'orders') orders.fetchOrders();
+                            if (currentView.value === 'finance') {
+                                finance.fetchCurrentStatus();
+                                finance.fetchHistory();
+                            }
+                            if (currentView.value === 'users') users.fetchUsers();
+                            if (currentView.value === 'settings') {
+                                settings.fetchSettings();
+                            }
+                            if (currentView.value === 'quotes'){
+                                quotes.fetchQuotes();
+                                products.fetchProducts();
+                                users.fetchUsers();
+                            }
+                            if (currentView.value === 'kds') {
+                                kds.startPolling();
+                                if (window.innerWidth < 768) {
+                                    mobileMenuOpen.value = false;
+                                    collapsed.value = false;
+                                } else {
+                                    mobileMenuOpen.value = true;
+                                    collapsed.value = true;
+                                }
+                            }
+                            if (currentView.value === 'staff') staff.fetchStaff();
                         }
                     }
                 }
@@ -1300,7 +1537,7 @@ createApp({
             pos, showItemDetailsModal, selectedCartItem, openItemDetails,finishSale,
             selectedItemAddonGroups, selectedItemUnitPrice, toggleAddonOption, isOptionSelected,
             users,
-            finance, closeFinanceShift, // Exportar
+            finance, closeFinanceShift,viewShiftDetails, backToShiftList, downloadShiftCloseExcel, // Exportar
             orders,
             quotes,
             saveQuote,
@@ -1314,7 +1551,9 @@ createApp({
             showTicketModal, ticketData, openTicketPreview, printTicketNow,            // Horarios
             showBusinessHoursModal, tempBusinessHour, openBusinessHoursModal, saveBusinessHours,
             // Map Picker
-            showMapModal, mapInstance, tempAddress, openMapModal, confirmLocation
+            showMapModal, mapInstance, tempAddress, openMapModal, confirmLocation,
+            // EXPONEMOS STAFF
+            staff,
         };
     }
 }).mount('#app');

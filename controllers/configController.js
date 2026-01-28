@@ -55,15 +55,12 @@ exports.getAdminConfig = async (req, res) => {
                 appName: config.appName,
                 adminName: config.adminName
             });
-        }
-
-        // CASO 2: NEGOCIO (Ve Su Propia Info)
-        if (req.user.role === 'admin_negocio') {
+        }else {
             const business = await Business.findById(req.user.businessId);
             if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
 
             return res.json({
-                role: 'admin_negocio',
+                role: req.user.role,
                 appName: business.name, // El nombre del negocio será el nombre de la App para ellos
                 adminName: req.user.username, // O un campo específico si lo agregas
                 address: business.address || '',

@@ -2,6 +2,8 @@ const Order = require('../models/Order');
 const Visit = require('../models/Visit');
 const Product = require('../models/Product');
 const Business = require('../models/Business');
+const CustomerModel = require('../models/Customer');
+const LoyaltyProgram = require('../models/LoyaltyProgram');
 const mongoose = require('mongoose');
 
 
@@ -143,12 +145,13 @@ exports.getDashboardStats = async (req, res) => {
 // 3. Registrar Venta POS
 exports.createPosOrder = async (req, res) => {
     try {
-        const { cart, customer, discount, paymentMethod, totals } = req.body;
+        const { cart, customer, discount, paymentMethod, totals, cashsfitsId } = req.body;
         
         const newOrder = new Order({
             businessId: req.user.businessId,
             customerName: customer ? customer.name : 'Cliente Mostrador',
             customerId: customer ? customer._id : null,
+            cashsfitsId: cashsfitsId,
             items: cart.map(item => ({
                 productId: item._id,
                 name: item.name,
@@ -176,8 +179,7 @@ exports.createPosOrder = async (req, res) => {
         // Si hay cliente de lealtad, sumar puntos
         if (customer && customer._id) {
             // Aquí podrías llamar a la lógica de loyaltyController o duplicarla simplificada
-            const CustomerModel = require('../models/Customer');
-            const LoyaltyProgram = require('../models/LoyaltyProgram');
+           
             const program = await LoyaltyProgram.findOne({ businessId: req.user.businessId });
             
             if (program && program.active) {
@@ -196,4 +198,3 @@ exports.createPosOrder = async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 };
-

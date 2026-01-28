@@ -6,9 +6,10 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     email: { type: String, required: true, unique: true, sparse: true, trim: true, lowercase: true }, 
     // CAMBIOS SAAS:
-    role: { type: String, enum: ['superadmin', 'admin_negocio'], default: 'admin_negocio' },
+    role: { type: String, enum: ['superadmin', 'admin_negocio', 'manager', 'cashier', 'cook', 'waiter'], default: 'admin_negocio' },
     businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business' }, // Null si es superadmin
-
+    pin: { type: String, maxlength: 4 }, // Para acceso rápido en POS
+    active: { type: Boolean, default: true }, // Soft Delete
     createdAt: { type: Date, default: Date.now }
 });
 

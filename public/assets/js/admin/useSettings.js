@@ -55,7 +55,6 @@ export function useSettings(auth) {
                      const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
                      settings.value.businessHours = days.map(d => ({ day: d, isOpen: true, open: '09:00', close: '22:00' }));
                 }
-                console.log("Configuraciones: ", settings.value)
             }
         } catch (e) { console.error(e); }
         

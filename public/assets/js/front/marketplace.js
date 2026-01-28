@@ -281,7 +281,6 @@ createApp({
                     ...b, // Conservamos _id, title, description, etc.
                     bgClass: getGradient(index) // Asignamos un color visual
                 }));
-                console.log(businesses.value, banners.value, showUserModal.value);
             } catch (err) {
                 // const req = err.json();
                 console.log(err)

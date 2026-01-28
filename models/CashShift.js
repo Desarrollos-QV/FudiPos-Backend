@@ -18,6 +18,16 @@ const cashShiftSchema = new Schema({
     // Contadores finales (se llenan al cerrar o calcular)
     finalCashExpected: { type: Number, default: 0 }, // Calculado por sistema
     finalCashActual: { type: Number }, // Lo que contó el cajero
+    totalCreditCard: { type: Number, default: 0 }, // Total de tarjeta de crédito
+    totalDebitCard: { type: Number, default: 0 }, // Total de tarjeta de débito
+    totalTransfer: { type: Number, default: 0 }, // Total de transferencias
+
+    totalSalesCreditCard :  { type: Number, default: 0 }, // Total de ventas realizadas mediante tarjeta de crédito
+    totalSalesDebitCard :  { type: Number, default: 0 }, // Total de ventas realizadas mediante tarjeta de débito
+    totalSalesTransferCard :  { type: Number, default: 0 }, // Total de ventas realizadas mediante transferencias
+    totalSalesCash :  { type: Number, default: 0 }, // Total de ventas realizadas mediante Efectivo
+
+    cashOut: { type: Number}, // Retiro por corte
     difference: { type: Number }, // Sobrante o Faltante
     
     // Movimientos Manuales (Entradas/Salidas de efectivo ajenas a ventas)

@@ -32,6 +32,7 @@ app.use('/api/customers', require('./routes/customers')); // <-- Listado de usua
 app.use('/api/finance', require('./routes/finance')); // <-- Gestion de cajas
 app.use('/api/orders', require('./routes/orders')); // <-- Gestion de ventas
 app.use('/api/quotes', require('./routes/quotes')); // <-- Gestion de Cotizaciones
+app.use('/api/staff', require('./routes/staff')); // <-- Gestion de miembros
 
 // --- RUTA PÚBLICA (SIN AUTH) ---
 app.use('/api/public', require('./routes/public'));
@@ -39,7 +40,7 @@ app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/connect', require('./routes/stripeConnect'));
 // --- NUEVO: MANEJO DE RUTAS AMIGABLES (SPA) ---
-// Esto permite entrar a tengo-hambre.com/buffalucas
+// Esto permite entrar a fudipos.shop/buffalucas
 app.get(/.*/, (req, res) => {
     // 1. Ignorar si es una petición a la API o a una imagen
     if (req.url.startsWith('/api') || req.url.startsWith('/uploads')) {

@@ -57,7 +57,7 @@ exports.getCurrentShift = async (req, res) => {
         const manualIns = currentShift.movements.filter(m => m.type === 'in').reduce((sum, m) => sum + m.amount, 0);
         const manualOuts = currentShift.movements.filter(m => m.type === 'out').reduce((sum, m) => sum + m.amount, 0);
         
-        const currentCashInDrawer = currentShift.initialCash + salesSummary.cash + manualIns - manualOuts;
+        const currentCashInDrawer = Math.round((currentShift.initialCash + salesSummary.cash + manualIns - manualOuts) * 100) / 100;
 
         res.json({
             status: 'open',
@@ -119,7 +119,7 @@ exports.closeShift = async (req, res) => {
         const shift = await CashShift.findOne({ businessId: req.user.businessId, status: 'open' });
         if (!shift) return res.status(404).json({ message: 'No hay caja abierta' });
 
-        const { finalCashActual } = req.body; // Lo que contó el usuario
+        const { finalCashActual, cashOut } = req.body; // Lo que contó el usuario
 
         // Recalcular todo una última vez para cerrar
         // (Podríamos reutilizar la lógica de getCurrentShift, pero lo haremos simplificado aquí)
@@ -130,26 +130,55 @@ exports.closeShift = async (req, res) => {
         // pero lo correcto es re-calcular 'finalCashExpected' en backend.
         
         // Calculo rápido backend:
+        // const salesStats = await Order.aggregate([
+        //     { $match: { businessId: req.user.businessId, createdAt: { $gte: shift.startTime }, status: { $ne: 'cancelled' } } },
+        //     { $group: { _id: "$paymentMethod", total: { $sum: "$total" } } }
+        // ]);
         const salesStats = await Order.aggregate([
-            { $match: { businessId: req.user.businessId, createdAt: { $gte: shift.startTime }, status: { $ne: 'cancelled' } } },
-            { $group: { _id: "$paymentMethod", total: { $sum: "$total" } } }
+            { 
+                $match: { 
+                    businessId: new mongoose.Types.ObjectId(req.user.businessId), 
+                    createdAt: { $gte: shift.startTime },
+                    status: { $ne: 'cancelled' }
+                } 
+            },
+            {
+                $group: {
+                    _id: "$paymentMethod", 
+                    total: { $sum: "$total" },
+                    count: { $sum: 1 }
+                }
+            }
         ]);
         
         let cashSales = 0;
         const cashStat = salesStats.find(s => s._id === 'cash');
         if (cashStat) cashSales = cashStat.total;
 
+        const creditCardSales = salesStats.find(s => s._id === 'credit_card');
+        const debitCardSales = salesStats.find(s => s._id === 'debit_card');
+        const transferSales = salesStats.find(s => s._id === 'transfer');
+
         const manualIns = shift.movements.filter(m => m.type === 'in').reduce((sum, m) => sum + m.amount, 0);
         const manualOuts = shift.movements.filter(m => m.type === 'out').reduce((sum, m) => sum + m.amount, 0);
-
-        const expected = shift.initialCash + cashSales + manualIns - manualOuts;
-
+        
+        const expected = Math.round((shift.initialCash + cashSales + manualIns - manualOuts) * 100) / 100; // 1920.80
+       
         shift.endTime = Date.now();
         shift.status = 'closed';
         shift.closedBy = req.user.id;
         shift.finalCashExpected = expected;
-        shift.finalCashActual = parseFloat(finalCashActual);
-        shift.difference = parseFloat(finalCashActual) - expected;
+        shift.finalCashActual = Math.round((parseFloat(finalCashActual) - cashOut) * 100) / 100;
+        shift.difference = Math.round((parseFloat(finalCashActual) - expected) * 100) / 100;
+        shift.cashOut = parseFloat(cashOut);
+        shift.totalCreditCard = creditCardSales?.total || 0;
+        shift.totalDebitCard = debitCardSales?.total || 0;
+        shift.totalTransfer = transferSales?.total || 0;
+        
+        shift.totalSalesCreditCard = creditCardSales?.count || 0;
+        shift.totalSalesDebitCard = debitCardSales?.count || 0;
+        shift.totalSalesTransferCard = transferSales?.count || 0;
+        shift.totalSalesCash = cashStat?.count || 0;
 
         await shift.save();
         res.json(shift);

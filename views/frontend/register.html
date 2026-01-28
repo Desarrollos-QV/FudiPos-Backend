@@ -169,7 +169,6 @@
                 if (config.stripePublicKey) {
                     stripe = Stripe(config.stripePublicKey);
                     pendingPlan = config.stripePendingPlanId;
-                    console.log("Configuración cargada correctamente");
                 } else {
                     throw new Error("No se pudo obtener la configuración de Stripe");
                 }

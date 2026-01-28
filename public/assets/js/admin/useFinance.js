@@ -15,7 +15,8 @@ export function useFinance() {
         credit: 0,     // Tarjeta Crédito
         transfer: 0    // Transferencias
     });
-    
+    const closeStatusView = ref('couts'); // couts , close
+    const cashOut = ref(0); // Monto a retirar de caja despues de cierre
     // Modales
     const showOpenModal = ref(false);
     const showMovementModal = ref(false);
@@ -24,10 +25,10 @@ export function useFinance() {
     // Detalle de Corte
     const showShiftDetailModal = ref(false);
     const selectedShift = ref(null);
+    const isLoading = Boolean(false);
 
     const viewShift = (shift) => {
         selectedShift.value = shift;
-        console.log(shift);
         showShiftDetailModal.value = true;
     };
 
@@ -40,7 +41,6 @@ export function useFinance() {
                 if (data.status === 'open') {
                     shiftStatus.value = 'open';
                     currentData.value = data;
-                    console.log(data);
                 } else {
                     shiftStatus.value = 'closed';
                     currentData.value = null;
@@ -67,6 +67,7 @@ export function useFinance() {
                 toastr.success('Caja abierta correctamente');
                 showOpenModal.value = false;
                 fetchCurrentStatus();
+                cashOut.value = 0;
             } else {
                 const err = await res.json();
                 toastr.error(err.message);
@@ -90,23 +91,33 @@ export function useFinance() {
     };
 
     const closeRegister = async () => {
-        try {
-            const res = await authFetch('/api/finance/close', {
-                method: 'POST',
-                body: JSON.stringify({ finalCashActual: closeAmount.value })
-            });
-            if (res.ok) {
-                toastr.success('Caja cerrada. Corte realizado.');
-                showCloseModal.value = false;
-                fetchCurrentStatus();
-                fetchHistory(); // Actualizar historial
-            }
-        } catch (e) { toastr.error('Error al cerrar caja'); }
+        if(closeStatusView.value == 'couts') {
+            closeStatusView.value = 'close';
+        }else {
+            try {
+                const res = await authFetch('/api/finance/close', {
+                    method: 'POST',
+                    body: JSON.stringify({ finalCashActual: closeAmount.value, cashOut: cashOut.value })
+                });
+                if (res.ok) {
+                    toastr.success('Caja cerrada. Corte realizado.');
+                    showCloseModal.value = false;
+                    fetchCurrentStatus();
+                    fetchHistory(); // Actualizar historial
+                    closeStatusView.value = 'couts';
+                    closeRecounts.debit = 0;
+                    closeRecounts.credit = 0;
+                    closeRecounts.transfer = 0;
+                    // Abrimos nueva caja con el monto dejado
+                    openAmount.value =  (closeAmount.value - cashOut.value);
+                    openRegister();
+                }
+            } catch (e) { toastr.error('Error al cerrar caja'); }
+        }
     };
 
     const generatePDF = (shift) => {
-        // try {
-            console.log(shift);
+        try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
@@ -151,15 +162,16 @@ export function useFinance() {
             doc.save(`corte-caja-${shift.id}.pdf`);
             toastr.success('PDF generado');
 
-        // } catch (e) { toastr.error('Error al generar PDF'); }
+        } catch (e) { toastr.error('Error al generar PDF'); }
     };
 
     return {
-        shiftStatus, currentData, historyList,
-        openAmount, movementForm, closeAmount, closeRecounts,
+        isLoading, shiftStatus, currentData, historyList,
+        openAmount, movementForm, closeAmount,cashOut, closeRecounts,
         showOpenModal, showMovementModal, showCloseModal,
         showShiftDetailModal, selectedShift, viewShift,
         fetchCurrentStatus, fetchHistory,
-        openRegister, registerMovement, closeRegister, generatePDF
+        openRegister, registerMovement, closeRegister, generatePDF,
+        closeStatusView
     };
 }

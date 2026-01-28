@@ -212,7 +212,6 @@ createApp({
 
         // Checkout & Send Whatsapp
         const checkout = () => {
-            console.log(customerName, customerPhone);
             if (!customerName.value.trim() || !customerPhone.value.trim()) { // Validar Name and Phone
                 return toastr.warning('Nombre y Teléfono/Whatsapp requeridos');
             }
@@ -254,6 +253,7 @@ createApp({
         // Filters & UI
         const filteredProducts = computed(() => {
             let res = products.value.filter(p => p.active);
+            console.log(res)
             if (selectedCategory.value !== 'all') res = res.filter(p => p.categories?.includes(selectedCategory.value));
             if (searchQuery.value) {
                 const q = searchQuery.value.toLowerCase();

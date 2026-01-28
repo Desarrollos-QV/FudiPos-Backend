@@ -1,4 +1,4 @@
-import { ref, computed, reactive, nextTick, watch } from 'vue';
+import { ref, computed, reactive, nextTick, watch, onMounted, onUnmounted } from 'vue';
 import { authFetch } from './api.js';
 
 export function usePos(productsRef, fetchMedia, setingsRef) {
@@ -8,7 +8,6 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
     const showPayModal = ref(false);
     const showDiscountModal = ref(false);
     const searchQuery = ref('');
-    // ACTUALIZADO: Payment Form con referencia
     const paymentForm = reactive({ method: 'cash', amountReceived: 0, change: 0, reference: '' });
     const showScannerProds = ref(false);
     let html5QrCode = null;
@@ -18,10 +17,8 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
     const customerList = ref([]);
     const discountForm = reactive({ type: 'fixed', value: 0, reason: '' });
 
-    // ... (Computed activeTab, currentTotals, discountPreview IGUALES) ...
     const activeTab = computed(() => posTabs.value.find(t => t.id === activeTabId.value));
-    const currentTotals = computed(() => { 
-            
+    const currentTotals = computed(() => {  
         const ivaform = (setingsRef.settings.value.iva / 100);
         const tab = activeTab.value;
         if (!tab) return { subtotal: 0, tax: 0, total: 0 };
@@ -37,15 +34,41 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
 
         return { subtotal, discountAmount, tax, total };
     });
-    const discountPreview = computed(() => { /* ... lógica existente ... */ return { original: 0, newTotal: 0, saving: 0 }; });
+    const discountPreview = computed(() => { 
+        const ivaform = (setingsRef.settings.value.iva / 100);
+        const tab = activeTab.value;
+        if (!tab) return { original: 0, newTotal: 0, saving: 0 };
 
-    // ... (Helpers: addTab, removeTab, addToCart, updateQty, removeFromCart IGUALES) ...
+        // 1. Calcular Subtotal base
+        let subtotal = tab.cart.reduce((sum, item) => {
+            const addonsCost = item.selectedOptions ? item.selectedOptions.reduce((acc, opt) => acc + (parseFloat(opt.price) || 0), 0) : 0;
+            return sum + ((item.price + addonsCost) * item.qty);
+        }, 0);
+
+        // 2. Total Original (con IVA)
+        const original = subtotal * (1 + ivaform);
+
+        // 3. Calcular Ahorro basado en el formulario temporal
+        let savingBase = discountForm.type === 'fixed' 
+            ? (parseFloat(discountForm.value) || 0) 
+            : subtotal * ((parseFloat(discountForm.value) || 0) / 100);
+            
+        if (savingBase > subtotal) savingBase = subtotal;
+
+        // 4. Totales Finales
+        const savingWithTax = savingBase * (1 + ivaform);
+        const newTotal = original - savingWithTax;
+
+        return { original, newTotal, saving: savingWithTax };
+    });
+
     const addTab = () => { const newId = posTabs.value.length > 0 ? Math.max(...posTabs.value.map(t => t.id)) + 1 : 1; posTabs.value.push({ id: newId, name: `Cliente ${newId}`, cart: [], customer: null, discount: { type: 'fixed', amount: 0, reason: '' } }); activeTabId.value = newId; };
     const removeTab = (id) => { if (posTabs.value.length === 1) return toastr.warning('Debe haber al menos una orden activa'); const idx = posTabs.value.findIndex(t => t.id === id); posTabs.value.splice(idx, 1); if (id === activeTabId.value) activeTabId.value = posTabs.value[0].id; };
     const addToCart = (product) => { 
         const tab = activeTab.value; 
-        const existing = tab.cart.find(i => i._id === product._id); 
-        if (existing) existing.qty++; else tab.cart.push({ ...product, qty: 1 }); 
+        // const existing = tab.cart.find(i => i._id === product._id);
+        // if (existing) existing.qty++; else tab.cart.push({ ...product, qty: 1 });
+        tab.cart.push({ ...product, qty: 1 });
         toastr.success(`Agregado: ${product.name}`); 
         searchQuery.value = ''; 
         isSearchFocused.value = false; 
@@ -53,7 +76,6 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
     const updateQty = (id, d) => { const t = activeTab.value; const i = t.cart.find(x => x._id === id); if (i) { i.qty += d; if (i.qty <= 0) t.cart.splice(t.cart.indexOf(i), 1); } };
     const removeFromCart = (itemId) => { const tab = activeTab.value; const index = tab.cart.findIndex(i => i._id === itemId); if (index !== -1) tab.cart.splice(index, 1); };
 
-    // --- NUEVO: Setter Método Pago ---
     const setPaymentMethod = (method) => {
         paymentForm.method = method;
         paymentForm.reference = ''; // Limpiar referencia al cambiar
@@ -90,8 +112,6 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
             return toastr.error('Monto recibido insuficiente');
         }
 
-        console.log(activeTab.value);
-
         try {
             const payload = {
                 cart: activeTab.value.cart,
@@ -99,9 +119,10 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
                 discount: activeTab.value.discount,
                 paymentMethod: paymentForm.method, // 'cash', 'credit_card', 'debit_card', 'transfer'
                 paymentReference: paymentForm.reference, // Guardar referencia bancaria si existe
-                totals: currentTotals.value
+                totals: currentTotals.value,
+                cashsfitsId: financeStatus.currentData?.value.shift._id
             };
-
+            
             const res = await authFetch('/api/analytics/pos/sale', { method: 'POST', body: JSON.stringify(payload) });
 
             if (res.ok) {
@@ -132,7 +153,17 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
         toastr.success(`Cliente asignado: ${customer.name}`); 
     };
     const removeCustomer = () => { activeTab.value.customer = null; activeTab.value.name = `Cliente ${activeTab.value.id}`; toastr.info('Cliente desvinculado'); };
-    const openDiscountModal = () => { if (activeTab.value.cart.length === 0) return toastr.warning('Agrega productos primero'); const current = activeTab.value.discount; discountForm.type = current.type; discountForm.value = current.amount; discountForm.reason = current.reason || ''; showDiscountModal.value = true; };
+    const openDiscountModal = () => { 
+        if (activeTab.value.cart.length === 0) {
+            return toastr.warning('Agrega productos primero'); 
+        } else {
+            const current = activeTab.value.discount; 
+            discountForm.type = current.type; 
+            discountForm.value = current.amount;
+            discountForm.reason = current.reason || ''; 
+            showDiscountModal.value = true; 
+        }
+    };
     const applyDiscount = () => { 
         activeTab.value.discount = { 
             type: discountForm.type, 
@@ -182,6 +213,22 @@ export function usePos(productsRef, fetchMedia, setingsRef) {
 
     let searchTimeout;
     watch(customerSearchQuery, (newVal) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { searchCustomers(); }, 300); });
+
+    // Click Outside para el buscador
+    const handleClickOutside = (event) => {
+        const searchContainer = document.querySelector('.pos-search-container');
+        if (searchContainer && !searchContainer.contains(event.target)) {
+            isSearchFocused.value = false;
+        }
+    };
+
+    onMounted(() => {
+        document.addEventListener('click', handleClickOutside);
+    });
+
+    onUnmounted(() => {
+        document.removeEventListener('click', handleClickOutside);
+    });
 
     return {
         posTabs, activeTabId, activeTab,

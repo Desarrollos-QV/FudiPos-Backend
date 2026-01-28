@@ -54,6 +54,7 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- SheetJS (Excel) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -61,8 +62,9 @@
 
 <div id="app" class="h-screen flex flex-col text-slate-800 dark:text-slate-100" v-cloak>
 
-    <!-- LOGIN SCREEN -->
+    
     <div v-if="!isAuthenticated" class="flex-1 flex items-center justify-center bg-slate-900 bg-opacity-95 p-4" style="background-image: url('../assets/images/background.png');background-position: center center;background-repeat: repeat-x;background-size: contain;">
+        <!-- LOGIN SCREEN -->
         <div class="bg-white dark:bg-slate-800 p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md border dark:border-slate-700">
             <div class="text-center mb-8">
                 <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-2xl ">
@@ -89,18 +91,18 @@
     <div v-else class="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         
         <!-- SIDEBAR -->
-        <aside class="bg-sidebar text-slate-300 flex flex-col transition-all duration-300 shadow-xl z-30 fixed md:relative h-full"  :class="[ collapsed ? 'md:w-20' : 'md:w-62', mobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 w-64' ]">
+        <aside v-if="currentView !== 'pos'" class="bg-sidebar text-slate-300 flex flex-col transition-all duration-300 shadow-xl z-30 fixed md:relative h-full"  
+        :class="[ collapsed ? 'md:w-20' : 'md:w-62', mobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 w-64' ]">
 
             <!-- LOGO -->
             <div class="h-20 flex items-center justify-center border-b border-slate-800">
                 <div class="flex items-center space-x-2 ml-4" v-if="!collapsed">
                     <img v-if="settings.avatar" :src="settings.avatar" class="w-10 h-10 object-cover rounded-full">
-                    <!--<img v-else src="../assets/images/icon-on.png" class="w-10 h-10" alt="Logo">-->
                     <div v-else class="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-primary/30">
                        <img src="../assets/images/icon-on.png" alt="logo" class="rounded-full">
                     </div>
                     <div>
-                        <h1 class="font-bold text-lg text-white leading-tight uppercase">{{ currentUserRole === 'superadmin' ? 'SUPER ADMIN' : (settings.appName || 'FUDI APP') }}</h1>
+                    <h1 class="font-bold text-lg text-white leading-tight uppercase">{{ currentUserRole === 'superadmin' ? 'SUPER ADMIN' : (settings.appName || 'FudiPos') }}</h1>
                     </div>
                 </div>
                 <div v-else>
@@ -109,19 +111,6 @@
                        <img src="../assets/images/icon-on.png" alt="logo" class="rounded-full">
                     </div>
                 </div>
-            </div>
-
-            <!-- BTN POS -->
-            <div v-if="currentUserRole != 'superadmin'" class="p-4 border-t border-slate-800">
-                <button @click.prevent="settings.plan === 'pro' && navigate({ id: 8, view: 'pos' })" 
-                class="flex items-center justify-center w-full py-2 px-4 rounded-lg border border-slate-700 bg-primary text-white shadow-lg transition text-slate-400 text-sm"
-                :class="[
-                    (settings.plan === 'free') ? 'opacity-80 cursor-not-allowed bg-slate-700' : ''
-                ]">
-                    <i class="fa-solid fa-cash-register"></i>
-                    <span v-if="!collapsed" class="ml-3">Generar Venta</span>
-                    <i v-if="settings.plan === 'free'" class="fa-solid fa-lock text-xs text-yellow-500 absolute right-8"></i>
-                </button>
             </div>
 
             <!-- LIST MENU -->
@@ -170,32 +159,60 @@
 
         <!-- MAIN CONTENT -->
         <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            <!-- Top Header -->
             <header class="h-20 bg-white dark:bg-slate-800 shadow-sm flex items-center justify-between px-4 md:px-8 z-10 border-b dark:border-slate-700">
-                <button @click="toggleSidebar" class="text-slate-500 hover:text-primary transition focus:outline-none"><i class="fa-solid fa-bars-staggered text-2xl"></i></button>
+                <div class="flex items-center justify-start">
+                    <button @click="toggleSidebar" class="text-slate-500 hover:text-primary transition focus:outline-none">
+                        <i v-if="currentView !== 'pos'" class="fa-solid fa-bars-staggered text-2xl"></i>
+                        <a href="./">
+                            <img v-if="currentView === 'pos'" :src="settings.avatar" class="w-10 h-10 object-cover rounded-full">
+                        </a>
+                    </button>
+                    <div v-if="currentView === 'pos' && currentUserRole === 'cashier'" class="p-4">
+                        <button @click="logout" class="flex items-center justify-center w-full py-2 px-4 rounded-lg border border-slate-700 hover:bg-red-500/20 hover:text-red-400 transition text-slate-400 text-sm">
+                            <i class="fa-solid fa-right-from-bracket mr-2"></i><span>Cerrar Sesión</span></button>
+                    </div>
+                </div>
                 <div class="flex items-center space-x-4 md:space-x-6">
-                    
-                    <button v-if="settings.plan == 'pro' && finance.shiftStatus.value === 'closed'" @click="finance.showOpenModal.value = true" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm px-3 py-1.5 rounded-xl shadow-lg shadow-emerald-500/30 font-bold transition">
+                    <!-- BTN POS -->
+                    <div v-if="currentUserRole != 'superadmin' && currentUserRole != 'cook' && currentView !== 'pos'" class="p-2">
+                        <button @click.prevent="settings.plan === 'pro' && navigate({ id: 8, view: 'pos' })" 
+                        class="flex items-center justify-center w-full py-1.5 px-4  bg-green-100 shadow-lg transition text-green-600 text-sm"
+                        :class="[(settings.plan === 'free') ? 'opacity-80 cursor-not-allowed bg-slate-700' : '' ]">
+                            <i class="fa-solid fa-cash-register"></i>
+                            <span v-if="!collapsed" class="ml-3">POS</span>
+                            <i v-if="settings.plan === 'free'" class="fa-solid fa-lock text-xs text-yellow-500 absolute right-8"></i>
+                        </button>
+                    </div>
+                    <button v-if="currentUserRole != 'cook' && settings.plan == 'pro' && finance.shiftStatus.value === 'closed'" @click="finance.showOpenModal.value = true" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm px-3 py-1.5  shadow-lg shadow-emerald-500/30 font-bold transition">
                         <i class="fa-solid fa-lock-open lg:mr-2"></i> <span class="hidden md:inline"> Abrir Caja</span>
                     </button>
-                    <button v-if="settings.plan == 'pro' && finance.shiftStatus.value === 'open'" @click="finance.showCloseModal.value = true" class="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1.5 rounded-xl shadow-lg shadow-red-500/30 font-bold transition">
+                    <button v-if="currentUserRole != 'cook' && settings.plan == 'pro' && finance.shiftStatus.value === 'open'" @click="finance.showCloseModal.value = true" class="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1.5  shadow-lg shadow-red-500/30 font-bold transition">
                         <i class="fa-solid fa-lock lg:mr-2"></i> <span class="hidden md:inline"> Cerrar Caja (Corte)</span>
                     </button>
                     
                     <button @click="toggleTheme" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-yellow-400 flex items-center justify-center hover:bg-slate-200 transition"><i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i></button>
                     <div class="flex items-center space-x-2">
-                        <div class="text-right hidden md:block"><p class="text-sm font-bold text-slate-800 dark:text-white">{{ username }}</p><p class="text-xs text-slate-500 uppercase">{{ currentUserRole === 'superadmin' ? 'Super Admin' : 'Gerente' }}</p></div>
+                        <div class="text-right hidden md:block">
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">{{ username }}</p>
+                            <p class="text-xs text-slate-500 uppercase">
+                                {{ 
+                                    currentUserRole === 'manager' ? 'Gerente' :
+                                    currentUserRole === 'cashier' ? 'Cajero' :
+                                    currentUserRole === 'cook' ? 'Cocinero' :
+                                    currentUserRole === 'waiter' ? 'Mesero' : 
+                                    currentUserRole || 'superadmin' 
+                                }}
+                            </p>
+                        </div>
                         <img v-if="settings.avatar" :src="settings.avatar" class="w-10 h-10 object-cover rounded-full ">
                         <div v-else class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">A</div>
                     </div>
                 </div>
             </header>
 
-            <!-- Content Scrollable -->
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-900 p-2 md:p-4 lg:p-8 transition-colors duration-300">
-                <!-- === VISTAS SUPER ADMIN === -->
-                <!-- SAAS CLIENTS VIEW -->
                 <div v-if="currentView === 'saas_clients'" class="space-y-6 animate-fade-in">
+                    <!-- SAAS CLIENTS VIEW -->
                     <div class="flex justify-between items-center"><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Gestión de Negocios</h2><button @click="openSaasModal()" class="bg-primary hover:bg-primaryDark text-white px-6 py-2.5 rounded-xl shadow-lg transition"><i class="fa-solid fa-plus mr-2"></i> Registrar Negocio</button></div>
                     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
                         <table class="w-full text-left">
@@ -211,11 +228,9 @@
                     </div>
                 </div>
 
-                <!-- === VISTAS NEGOCIO === -->
-                <!-- DASHBOARD VIEW -->
                 <div v-if="currentView === 'dashboard'" class="animate-fade-in space-y-6">
+                    <!-- ==================== DASHBOARD ==================== -->
                     <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Panel de Control</h2>
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div v-for="kpi in kpis" :key="kpi.label" class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center hover:shadow-md transition-shadow">
                             <div :class="`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mr-4 ${kpi.colorBg} ${kpi.colorText}`"><i :class="kpi.icon"></i></div>
@@ -242,23 +257,20 @@
                     </div>
                 </div>
 
-                <!-- POS VIEW -->
                 <div v-if="currentView === 'pos'" class="h-screen md:h-full flex flex-col -m-4 md:-m-8 animate-fade-in text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-900">
-                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_minmax(380px,_850px)] h-full overflow-hidden">
+                    <!-- ==================== POS ==================== -->
+                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_minmax(380px,_650px)] h-full overflow-hidden">
                         
                         <!-- IZQUIERDA: ACCIONES Y BUSCADOR -->
-                        <div class="p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto bg-white dark:bg-slate-800 lg:bg-slate-50 lg:dark:bg-slate-900 border-b lg:border-b-0 lg:border-r dark:lg:border-slate-700 order-2 lg:order-1">
-                            
+                        <div class="p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto bg-white dark:bg-slate-800 lg:bg-slate-50 lg:dark:bg-slate-900 border-b lg:border-b-0 lg:border-r dark:lg:border-slate-700 order-1 lg:order-1">
                             <!-- 1. BUSCADOR TIPO AUTOCOMPLETE -->
-                            <div class="relative w-full z-40">
-                                <div class="relative shadow-sm">
+                            <div class="relative w-full z-40 pos-search-container">
+                                <div class="relative shadow-sm" >
                                     <i class="fa-solid fa-magnifying-glass absolute left-4 md:left-5 top-2 md:top-4 text-slate-400 text-lg"></i>
-                                    
                                     <input 
                                         v-model="pos.searchQuery.value" 
                                         @keyup.enter="pos.handleSearchEnter"
                                         @focus="pos.isSearchFocused.value = true"
-                                        @blur="pos.isSearchFocused.value = true"
                                         type="text" 
                                         placeholder="Escanear o buscar..." 
                                         class="w-full pl-12 md:pl-14 pr-12 md:pr-14 py-3 md:py-4 rounded-2xl border-none bg-white dark:bg-slate-700 text-sm md:text-lg shadow-lg focus:ring-4 focus:ring-primary/20 outline-none transition-all">
@@ -307,46 +319,68 @@
                                 </div>
                             </div>
 
-                            <!-- 2. GRID DE ACCIONES RÁPIDAS -->
-                            <div class="grid grid-cols-2 gap-2 md:gap-4 flex-1 content-start">
-                                <!-- Agregar Cliente -->
-                                <button @click="pos.openCustomerModal" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-primary hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
-                                    <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition">
-                                        <i class="fa-solid fa-user-plus"></i>
-                                    </div>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Cliente</span>
+                           
+                            <!-- 3. CATEGORIAS -->
+                            <div class="grid lg:grid-cols-6 md:grid-cols-4 gap-2 md:gap-4">
+                                <!-- Enlistamos las categorias -->
+                                <button @click="selectCategory('all') " class="h-12 lg:w-auto md:w-28 rounded-2xl shadow-sm border border-transparent hover:border-primary hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group" 
+                                    :class="selectedCategory === 'all' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400'">
+                                    <span class="font-bold text-xs md:text-sm text-center leading-tight" 
+                                    :class="selectedCategory === 'all' ? 'text-green-700 dark:text-green-400 font-bold' : 'text-slate-500 dark:text-slate-400'">Todos</span>
                                 </button>
-                                
-                                <!-- Descuento -->
-                                <button @click="pos.openDiscountModal" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-red-500 hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
-                                    <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition">
-                                        <i class="fa-solid fa-tag"></i>
-                                    </div>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Descuento</span>
+                                <button v-for="cat in availableCategories" @click="selectCategory(cat._id) " :key="cat._id" class="h-12 lg:w-auto md:w-28 rounded-2xl shadow-sm border border-transparent hover:border-primary hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group" 
+                                :class="selectedCategory === cat._id ? 'bg-green-100 dark:bg-green-900/30' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400'">
+                                    <span class="font-bold text-xs md:text-sm text-center leading-tight"
+                                    :class="selectedCategory === cat._id ? 'text-green-700 dark:text-green-400 font-bold' : 'text-slate-500 dark:text-slate-400'">{{ cat.name }}</span>
                                 </button>
-                                
-                                <!-- Cambiar Vendedor
-                                <button @click="pos.changeSalesperson" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-purple-500 hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
-                                    <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition"><i class="fa-solid fa-id-badge"></i></div>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Vendedor</span>
-                                </button> -->
-                                
-                                <!-- Servicios / Recargas 
-                                <button @click="pos.triggerRecargas" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-emerald-500 hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
-                                    <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition"><i class="fa-solid fa-mobile-screen-button"></i></div>
-                                    <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Servicios</span>
-                                </button>-->
+                             </div>
+
+                            <!-- PRODUCTS GRID -->
+                            <div class="px-4 pb-24 overflow-y-auto" >
+                                <div class="flex justify-between items-end mb-4">
+                                    <h2 class="text-lg font-bold text-slate-800 dark:text-white">{{ selectedCategoryName }} 
+                                        <span class="text-xs font-normal text-slate-400 ml-1">({{ filteredProducts.length }})</span>
+                                    </h2>
+                                </div>
+
+                                <div v-if="filteredProducts.length > 0" class="grid  2xl:grid-cols-6 xl:grid-cols-3 md:grid-cols-3 sm:grid-cols-2 xs:grid-cols-2  gap-4">
+                                    <div v-for="prod in filteredProducts"  @click="pos.addToCart(prod)" :key="prod._id" 
+                                    class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center gap-4">
+                                        <div class="w-full h-30 shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                                            <img :src="prod.image || 'https://via.placeholder.com/150'" class="w-full h-full object-cover">
+                                        </div>
+                                        
+                                        <div class="px-3 pb-2">
+                                            <div>
+                                                <h5 class="font-bold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">{{ prod.name.slice(0, 18) + '...' }}</h5>
+                                                <div class="flex items-center justify-between gap-2 mt-2">
+                                                    <p class="text-xs text-slate-400 font-medium">
+                                                        {{ prod.barcode.toUpperCase() }}
+                                                    </p>
+                                                    <p class="text-xs text-slate-400 font-medium bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full">
+                                                        ${{ prod.price.toFixed(2) }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-else class="text-center py-10">
+                                    <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300 dark:text-slate-600"><i class="fa-solid fa-utensils text-3xl"></i></div>
+                                    <p class="text-slate-500 dark:text-slate-400 font-medium">No encontramos productos.</p>
+                                </div>
                             </div>
                         </div>
 
                         <!-- DERECHA: CARRITO -->
-                        <div class="flex flex-col bg-white dark:bg-slate-800 min-h-0 overflow-hidden order-1 lg:order-2">
+                        <div class="flex flex-col bg-white dark:bg-slate-800 min-h-0 overflow-hidden order-2 lg:order-2">
                             <!-- Tabs -->
                             <div class="px-2 md:px-3 pt-2 md:pt-3 flex overflow-x-auto border-b dark:border-slate-700 hide-scroll dark:bg-slate-700 gap-1">
                                 <div v-for="tab in pos.posTabs.value" :key="tab.id" 
                                     @click="pos.activeTabId.value = tab.id"
                                     class="px-3 md:px-6 py-2 md:py-3 cursor-pointer flex items-center gap-1 md:gap-2 min-w-[80px] md:min-w-[100px] transition-colors rounded-t-lg translate-y-px box-border whitespace-nowrap text-xs md:text-sm"
-                                    :class="pos.activeTabId.value === tab.id ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 bg-slate-100 hover:bg-white dark:bg-slate-700 dark:hover:bg-slate-900 dark:hover:text-white'">
+                                    :class="pos.activeTabId.value === tab.id ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 bg-slate-100 hover:bg-white dark:bg-slate-700 dark:hover:bg-slate-900 dark:hover:text-white'">
                                     <span class="font-medium truncate">{{ tab.name }}</span>
                                     <i @click.stop="pos.removeTab(tab.id)" class="fa-solid fa-xmark text-xs opacity-50 hover:opacity-100 flex-shrink-0"></i>
                                 </div>
@@ -362,10 +396,10 @@
                                     </div>
                                     <div class="min-w-0">
                                         <span class="block font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm truncate">
-                                            {{ pos.activeTab.value.customer ? pos.activeTab.value.customer.name : 'Mostrador' }}
+                                            {{ pos.activeTab.value.customer ? pos.activeTab.value.customer.name.toUpperCase() : 'Mostrador' }}
                                         </span>
                                         <span v-if="pos.activeTab.value.customer" class="text-[9px] md:text-[10px] text-indigo-600 dark:text-indigo-300 truncate">
-                                            {{ pos.activeTab.value.customer.points }} Pts
+                                            {{ pos.activeTab.value.customer.phone }} | {{ pos.activeTab.value.customer.points }} Pts
                                         </span>
                                     </div>
                                 </div>
@@ -463,8 +497,48 @@
                     </div>
                 </div> 
 
-                <!-- LOYALTY VIEW -->
+                <div v-if="currentView === 'pos'"  class="fixed bottom-0 left-0 right-0 w-full h-16 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-600">
+                    <!-- ==================== GRID DE ACCIONES RÁPIDAS POS ==================== -->
+                    <div class="flex items-center justify-center gap-2">
+                        <!-- Ir al Home -->
+                        <a href="./" class="w-80 h-4 md:h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-primary hover:shadow-md transition flex items-center justify-center gap-1 md:gap-2 group">
+                            <div class="w-3 md:w-9 h-3 md:h-9 rounded-full bg-slate-50 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400 flex items-center justify-center text-lg md:text-lg group-hover:scale-110 transition">
+                                <i class="fa-solid fa-house"></i>
+                            </div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Home</span>
+                        </a>
+                        <!-- Agregar Cliente -->
+                        <button @click="pos.openCustomerModal" class="w-80 h-4 md:h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-primary hover:shadow-md transition flex items-center justify-center gap-1 md:gap-2 group">
+                            <div class="w-3 md:w-9 h-3 md:h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg md:text-lg group-hover:scale-110 transition">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Cliente</span>
+                        </button>
+                        
+                        <!-- Descuento -->
+                        <button @click="pos.openDiscountModal" class="w-80 h-4 md:h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-red-500 hover:shadow-md transition flex items-center justify-center gap-1 md:gap-2 group">
+                            <div class="w-3 md:w-9 h-3 md:h-9 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-lg md:text-lg group-hover:scale-110 transition">
+                                <i class="fa-solid fa-tag"></i>
+                            </div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Descuento</span>
+                        </button>
+                        
+                        <!-- Cambiar Vendedor
+                        <button @click="pos.changeSalesperson" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-purple-500 hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
+                            <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition"><i class="fa-solid fa-id-badge"></i></div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Vendedor</span>
+                        </button> -->
+                        
+                        <!-- Servicios / Recargas 
+                        <button @click="pos.triggerRecargas" class="h-24 md:h-32 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-transparent hover:border-emerald-500 hover:shadow-md transition flex flex-col items-center justify-center gap-1 md:gap-2 group">
+                            <div class="w-9 md:w-12 h-9 md:h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg md:text-xl group-hover:scale-110 transition"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200 text-xs md:text-sm text-center leading-tight">Servicios</span>
+                        </button>-->
+                    </div>
+                </div>
+
                 <div v-if="currentView === 'loyalty'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== LOYALTY ==================== -->
                     <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Programa de Lealtad</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
@@ -485,8 +559,8 @@
                     </div>
                 </div>
 
-                <!-- PRODUCTOS VIEW (CON DATATABLES) -->
                 <div v-if="currentView === 'products'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== PRODUCTOS ==================== -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Productos</h2><p class="text-slate-500 dark:text-slate-400">Gestión de platillos</p></div>
                         <button @click="openProductModal(null, mediaFiles.length)" class="bg-primary hover:bg-primaryDark text-white px-6 py-2.5 rounded-xl shadow-lg transition flex items-center w-full md:w-auto justify-center"><i class="fa-solid fa-plus mr-2"></i> Nuevo Producto</button>
@@ -500,8 +574,8 @@
                     </div>
                 </div>
 
-                <!-- MEDIA LIBRARY VIEW -->
                 <div v-if="currentView === 'media'" class="h-full flex flex-col animate-fade-in">
+                    <!-- ==================== MEDIA LIBRARY ==================== -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Biblioteca de Medios</h2><p class="text-slate-500 dark:text-slate-400">Gestiona imágenes y videos</p></div>
                         <div class="flex items-center gap-3 w-full md:w-auto"><input type="file" ref="fileInput" @change="uploadFile" class="hidden" accept="image/*,video/*"><button @click="$refs.fileInput.click()" class="bg-primary hover:bg-primaryDark text-white px-6 py-2.5 rounded-xl shadow-lg transition flex items-center justify-center w-full md:w-auto"><i class="fa-solid fa-cloud-arrow-up mr-2"></i><span v-if="isUploading">Subiendo...</span><span v-else>Subir Nuevo</span></button></div>
@@ -526,8 +600,8 @@
                     </div>
                 </div>
 
-                <!-- CATEGORÍAS VIEW -->
                 <div v-if="currentView === 'categories'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== CATEGORÍAS ==================== -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Categorías</h2><p class="text-slate-500 dark:text-slate-400">Organiza tu menú en secciones</p></div>
                         <button @click="openCategoryModal(null, mediaFiles.length)" class="bg-secondary hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl shadow-lg transition flex items-center w-full md:w-auto justify-center"><i class="fa-solid fa-plus mr-2"></i> Nueva Categoría</button>
@@ -551,8 +625,9 @@
                     </div>
                 </div>
 
-                <!-- ADDONS VIEW -->
+                
                 <div v-if="currentView === 'addons'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== ADDONS ==================== -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Complementos y Extras</h2><p class="text-slate-500 dark:text-slate-400">Grupos de opciones</p></div>
                         <button @click="openAddonModal()" class="bg-secondary hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl shadow-lg transition flex items-center w-full md:w-auto justify-center"><i class="fa-solid fa-plus mr-2"></i> Nuevo Grupo</button>
@@ -568,8 +643,9 @@
                     </div>
                 </div>
 
-                <!-- ADS VIEW (PUBLICIDAD) -->
+                
                 <div v-if="currentView === 'ads'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== ADS VIEW (PUBLICIDAD) ==================== -->
                     <div class="flex justify-between items-center">
                         <div><h2 class="text-2xl font-bold text-slate-800 dark:text-white">Publicidad y Banners</h2><p class="text-slate-500 dark:text-slate-400">Promociones visibles en el menú</p></div>
                         <button @click="openBannerModal(null, mediaFiles.length)" class="bg-secondary hover:bg-emerald-600 text-white px-6 py-2.5 rounded-xl shadow-lg transition flex items-center"><i class="fa-solid fa-plus mr-2"></i> Crear Banner</button>
@@ -588,8 +664,9 @@
                     </div>
                 </div>
 
-                <!-- VIEW LISTADO DE VENTAS -->
+                
                 <div v-if="currentView === 'orders'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== LISTADO DE VENTAS ==================== -->
                     <div class="flex justify-between items-center">
                         <div>
                             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Historial de Ventas</h2>
@@ -622,9 +699,9 @@
                     </div>
                 </div>
 
-                <!-- VIEW DETALLE DE VENTA -->
+                
                 <div v-if="currentView === 'order_details'" class="animate-fade-in pb-10">
-                    <!-- Loading State -->
+                    <!-- ==================== DETALLE DE VENTA ==================== -->
                     <div v-if="orders.isLoading.value" class="h-96 flex flex-col items-center justify-center text-slate-400">
                         <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
                         <p>Cargando detalles del pedido...</p>
@@ -788,8 +865,9 @@
                     </div>
                 </div>
 
-                <!-- VISTA: COTIZACIONES (LISTA) -->
+                
                 <div v-if="currentView === 'quotes'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== COTIZACIONES ==================== -->
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold dark:text-white">Cotizaciones</h2>
                         <button @click="startNewQuote" class="bg-primary hover:bg-primaryDark text-white px-4 py-2 rounded-lg font-bold shadow transition">
@@ -814,9 +892,9 @@
                     </div>
                 </div>
 
-                <!-- VISTA: EDITOR DE COTIZACIÓN -->
+                
                 <div v-if="currentView === 'quote_editor'" class="h-screen md:h-full flex flex-col -m-4 md:-m-8 bg-slate-50 dark:bg-slate-900">
-                    <!-- Header -->
+                    <!-- ==================== EDITOR DE COTIZACIÓN ==================== -->
                     <div class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-sm z-10">
                         <div class="flex items-center gap-3 w-full md:w-auto">
                             <button @click="viewListQuotes()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-primary transition flex-shrink-0">
@@ -829,7 +907,6 @@
                         </button>
                     </div>
 
-                    <!-- Main Content -->
                     <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
                         <!-- Panel Izquierdo: Formulario -->
                         <div class="w-full lg:w-1/3 bg-white dark:bg-slate-800 lg:bg-slate-50 lg:dark:bg-slate-900 border-r-0 lg:border-r dark:lg:border-slate-700 flex flex-col overflow-y-auto order-2 lg:order-1">
@@ -997,10 +1074,9 @@
                     </div>
                 </div>
 
-                <!-- =====================  VIEW FINANZAS / CAJA ===================== -->
+                
                 <div v-if="currentView === 'finance'" class="animate-fade-in space-y-6">
-                    
-                    <!-- Header -->
+                    <!-- =====================  FINANZAS / CAJA ===================== -->
                     <div class="lg:flex justify-between items-center">
                         <div>
                             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Control de Caja</h2>
@@ -1146,10 +1222,9 @@
                     </div>
                 </div>
 
-                <!-- =====================  historial de cajas ===================== -->
+                
                 <div v-if="currentView === 'finance_history'" class="animate-fade-in space-y-6">
-                    
-                    <!-- HISTORIAL DE CORTES (SIEMPRE VISIBLE) -->
+                    <!-- =====================  historial de cajas ===================== -->
                     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 mt-8">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="font-bold text-lg text-slate-800 dark:text-white">Historial de Cortes</h3>
@@ -1180,7 +1255,7 @@
                                             </span>
                                         </td>
                                         <td class="p-3 text-right">
-                                            <button @click="finance.viewShift(h)" class="w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition">
+                                            <button @click="viewShiftDetails(h)" class="w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition">
                                                 <i class="fa-solid fa-eye"></i>
                                             </button>
                                         </td>
@@ -1189,12 +1264,269 @@
                             </table>
                         </div>
                     </div>
-
                 </div>
-                                        
 
-                <!-- VIEW LISTADO DE USUARIOS -->
+                
+                <div v-if="currentView === 'finance_details'" class="animate-fade-in">
+                    <!-- ==================== DETALLES DE CORTE DE CAJA ==================== -->
+                    <div v-if="finance.isLoading.value" class="h-96 flex flex-col items-center justify-center text-slate-400">
+                        <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                        <p>Cargando detalles del corte...</p>
+                    </div>
+
+                    <div v-else-if="finance.selectedShift.value">
+                        <!-- Header con Acciones -->
+                        <div class="flex flex-col md:flex-row justify-between items-center md:items-center gap-4 mb-8">
+                            <div class="flex items-center gap-4">
+                                <button @click="backToShiftList" class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                                    <i class="fa-solid fa-arrow-left text-slate-500 dark:text-slate-300"></i>
+                                </button>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        Detalle de Corte de Caja  
+                                    </h2>
+                                    <p class="text-sm text-slate-500" v-if="finance.selectedShift.value">
+                                        Abierto: {{ new Date(finance.selectedShift.value.startTime).toLocaleString() }}
+                                        <span v-if="finance.selectedShift.value.endTime"> | Cerrado: {{ new Date(finance.selectedShift.value.endTime).toLocaleString() }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Botones Acción  -->
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="downloadShiftCloseExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold shadow transition flex items-center gap-2">
+                                    <i class="fa-solid fa-file-excel"></i> Descargar Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            
+                            <!-- COLUMNA IZQUIERDA: PRODUCTOS -->
+                            <div class="lg:col-span-2 space-y-6">
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                                            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                <span class="block text-xs font-bold uppercase text-slate-400 mb-1">Fondo Inicial</span>
+                                                <span class="block text-xl font-black dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
+                                            </div>
+                                            <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                                                <!-- Entradas Manuales -->
+                                                <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Entradas (Manual)</span>
+                                                <span class="block text-xl font-black text-green-700 dark:text-green-300">
+                                                    +${{ finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}
+                                                </span>
+                                            </div>
+                                            <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                                                <!-- Salidas Manuales -->
+                                                <span class="block text-xs font-bold uppercase text-red-600 dark:text-red-400 mb-1">Salidas (Manual)</span>
+                                                <span class="block text-xl font-black text-red-700 dark:text-red-300">
+                                                    -${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                            <!-- Ventas Tarjetas Credito -->
+                                            <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                                                <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Tarjetas Crédito</span>
+                                                <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                                                    finance.selectedShift.value.totalCreditCard ? finance.selectedShift.value.totalCreditCard.toFixed(2) : '---' }}</span>
+                                            </div> 
+                                            <!-- Ventas Tarjetas Debito -->
+                                            <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                                                <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Tarjetas Débito</span>
+                                                <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                                                    finance.selectedShift.value.totalDebitCard ? finance.selectedShift.value.totalDebitCard.toFixed(2) : '---' }}</span>
+                                            </div> 
+                                            <!-- Ventas Transferencias -->
+                                            <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                                                <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Transferencias</span>
+                                                <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                                                    finance.selectedShift.value.totalTransfer ? finance.selectedShift.value.totalTransfer.toFixed(2) : '---' }}</span>
+                                            </div>
+                                            <!-- Ventas Efectivo -->
+                                            <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                                                <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Efectivo Final (Real)</span>
+                                                <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                                                    finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '---' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Desglose Efectivo Calculado -->
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <div>
+                                            <h4 class="font-bold text-lg mb-4 flex items-center gap-2 dark:text-white">
+                                                <i class="fa-solid fa-calculator text-primary"></i> Cálculo Sistema (Efectivo)
+                                            </h4>
+                                            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                                <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400">Fondo Inicial</span>
+                                                    <span class="text-sm font-bold dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400">Ventas en Efectivo (Calc)</span>
+                                                    <!-- Ventas Efectivo = Expected - Initial - Ins + Outs -->
+                                                    <span class="text-sm font-bold dark:text-white">
+                                                        ${{ (finance.selectedShift.value.finalCashExpected 
+                                                            - finance.selectedShift.value.initialCash 
+                                                            - finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0) 
+                                                            + finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0)).toFixed(2) 
+                                                        }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400 text-green-600">+ Entradas Manuales</span>
+                                                    <span class="text-sm font-bold text-green-600">+${{ finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex justify-between p-3 border-b border-slate-100 dark:border-slate-700">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400 text-red-500">- Salidas Manuales</span>
+                                                    <span class="text-sm font-bold text-red-500">-${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex justify-between p-3 bg-slate-50 dark:bg-slate-700/30">
+                                                    <span class="text-sm font-bold text-slate-800 dark:text-white">Total Esperado</span>
+                                                    <span class="text-sm font-bold text-primary">${{ finance.selectedShift.value.finalCashExpected.toFixed(2) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Desglose de Movimientos Manuales -->
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <div>
+                                            <h4 class="font-bold text-lg mb-4 flex items-center gap-2 dark:text-white">
+                                                <i class="fa-solid fa-exchange-alt text-orange-500"></i> Movimientos de Caja
+                                            </h4>
+                                            
+                                            <div v-if="finance.selectedShift.value.movements && finance.selectedShift.value.movements.length > 0" class="space-y-2 max-h-[250px] overflow-y-auto thin-scroll">
+                                                <div v-for="(mov, i) in finance.selectedShift.value.movements" :key="i" class="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                                                    <div>
+                                                        <p class="text-sm font-bold dark:text-white">{{ mov.reason }}</p>
+                                                        <p class="text-xs text-slate-500">{{ new Date(mov.date || finance.selectedShift.value.startTime).toLocaleTimeString() }}</p>
+                                                    </div>
+                                                    <span :class="mov.type === 'in' ? 'text-green-500' : 'text-red-500'" class="font-mono font-bold">
+                                                        {{ mov.type === 'in' ? '+' : '-' }}${{ mov.amount.toFixed(2) }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-center py-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                                <p class="text-sm text-slate-400">Sin movimientos manuales registrados.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- COLUMNA DERECHA: TOTALES E INFO -->
+                            <div class="space-y-6">
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <!-- Cantidad de Tickets e informacion -->
+                                        <div>
+                                            <h4 class="font-bold text-sm uppercase text-slate-500 mb-4">Información</h4>
+                                            <div class="gap-4 text-sm">
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">Cajero:</span>
+                                                    <span class="font-bold dark:text-white">{{ finance.selectedShift.value.closedBy.username }}</span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">Cierre de caja:</span>
+                                                    <span class="font-bold dark:text-white">{{ new Date(finance.selectedShift.value.endTime).toLocaleString() }}</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="gap-4 text-sm">
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">TICKETS:</span>
+                                                    <h2 class="font-bold dark:text-white">
+                                                        {{
+                                                            finance.selectedShift.value.totalSalesCash + 
+                                                            finance.selectedShift.value.totalSalesCreditCard + 
+                                                            finance.selectedShift.value.totalSalesDebitCard
+                                                        }}
+                                                    </h2>
+                                                </div> 
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">Ticket promedio:</span>
+                                                    <h2 class="font-bold dark:text-white">
+                                                        ${{
+                                                            ((finance.selectedShift.value.finalCashActual + 
+                                                            finance.selectedShift.value.totalDebitCard + 
+                                                            finance.selectedShift.value.totalCreditCard + 
+                                                            finance.selectedShift.value.totalTransfer) / 
+                                                            (finance.selectedShift.value.totalSalesCash + 
+                                                            finance.selectedShift.value.totalSalesCreditCard + 
+                                                            finance.selectedShift.value.totalSalesDebitCard)).toFixed(2)
+                                                        }}
+                                                    </h2>
+                                                </div> 
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                    <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                                        <!-- Balance Final (Footer del reporte) -->
+                                        <div>
+                                            <h4 class="font-bold text-sm uppercase text-slate-500 mb-4">Balance de Cierre</h4>
+                                            <div class="gap-4 text-sm">
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400">Fondo Inicial</span>
+                                                    <span class="text-sm font-bold dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">+ Ventas en Efectivo</span>
+                                                    <span class="font-bold text-green-600">
+                                                        ${{ (finance.selectedShift.value.finalCashExpected 
+                                                            - finance.selectedShift.value.initialCash 
+                                                            - finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0) 
+                                                            + finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0)).toFixed(2) 
+                                                        }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400 text-green-600">+ Entradas de efectivo</span>
+                                                    <span class="text-sm font-bold text-green-600">${{ finance.selectedShift.value.movements.filter(m => m.type === 'in').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-sm text-slate-600 dark:text-slate-400 text-red-500">- Salidas de efectivo</span>
+                                                    <span class="text-sm font-bold text-red-500">${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}</span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">- Retiro de caja:</span>
+                                                    <span class="font-bold text-red-500">${{ finance.selectedShift.value.cashOut ? finance.selectedShift.value.cashOut.toFixed(2) : '0.00' }}</span>
+                                                </div>
+                                                
+                                                <div class="flex-1 flex justify-between items-center p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                                    <span class="text-slate-600 dark:text-slate-400">Total esperado en caja:</span>
+                                                    <span class="font-bold dark:text-white">${{ finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '0.00' }}</span>
+                                                </div>
+                                                <div class="flex-1 flex justify-between items-center p-3 rounded-lg" 
+                                                    :class="(finance.selectedShift.value.difference) >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                                    <span class="font-bold">Diferencia:</span>
+                                                    <span class="font-black">{{ (finance.selectedShift.value.difference || 0).toFixed(2) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>  
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="inner-table" class="d-none" style="display: none;"></div>
+                    </div>
+                </div>
+
+                
                 <div v-if="currentView === 'users'" class="space-y-6 animate-fade-in">
+                    <!-- ==================== LISTADO DE USUARIOS ==================== -->
                     <div class="flex justify-between items-center">
                         <div>
                             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Base de Usuarios</h2>
@@ -1222,9 +1554,9 @@
                     </div>
                 </div>
 
-                <!-- VIEW DETALLE DE USUARIO (CRM) -->
+                
                 <div v-if="currentView === 'user_details'" class="animate-fade-in pb-10">
-                    <!-- Header Navegación -->
+                    <!-- ==================== DETALLE DE USUARIO (CRM) ==================== --> 
                     <div class="flex items-center gap-4 mb-6">
                         <button @click="currentView = 'users'" class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                             <i class="fa-solid fa-arrow-left text-slate-500 dark:text-slate-300"></i>
@@ -1360,8 +1692,9 @@
                     </div>
                 </div>
 
-                <!-- =====================  CONFIGURACIÓN VIEW ===================== -->
+                
                 <div v-if="currentView === 'settings'" class="animate-fade-in mx-auto px-0 md:px-0 max-w-full">
+                    <!-- ===================== CONFIGURACIÓN VIEW ===================== -->
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 px-4">
                         <div>
                             <h1 class="text-2xl md:text-3xl font-black dark:text-white">Configuración del Negocio</h1>
@@ -1665,8 +1998,87 @@
                     </div>
                 </div>
 
-                <!-- ===================== NUEVA VISTA KDS (COCINA) ===================== -->
+                <div v-if="currentView === 'staff'" class="animate-fade-in pb-10">
+                    <!-- ================== VISTA: EQUIPO Y ROLES (STAFF) ================== -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-black dark:text-white">Equipo y Permisos</h1>
+                            <p class="text-slate-500 dark:text-slate-400">Gestiona quién tiene acceso a tu sistema y sus roles.</p>
+                        </div>
+                        <button @click="staff.openModal()" class="px-5 py-2.5 bg-primary hover:bg-primaryDark text-white font-bold rounded-xl shadow-lg shadow-primary/30 transition flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus"></i> Nuevo Miembro
+                        </button>
+                    </div>
+
+                    <!-- Loading -->
+                    <div v-if="staff.loading.value" class="py-12 text-center text-slate-400">
+                        <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i>
+                        <p>Cargando equipo...</p>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div v-else-if="staff.staffList.value.length === 0" class="bg-white dark:bg-slate-800 rounded-3xl p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-700">
+                        <div class="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl text-slate-300">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <h3 class="text-xl font-bold dark:text-white mb-2">No tienes sub-cuentas</h3>
+                        <p class="text-slate-500 mb-6 max-w-md mx-auto">Agrega cajeros, meseros o gerentes para operar tu negocio.</p>
+                        <button @click="staff.openModal()" class="text-primary font-bold hover:underline">Agregar el primero</button>
+                    </div>
+
+                    <!-- Staff Grid -->
+                    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="member in staff.staffList.value" :key="member._id" 
+                             class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition relative group overflow-hidden">
+                            
+                            <!-- Badge Activo -->
+                            <div class="absolute top-4 right-4">
+                                <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider"
+                                      :class="member.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                                    {{ member.active ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-start gap-4 mb-4 mt-2">
+                                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0"
+                                     :class="staff.availableRoles.find(r => r.value === member.role)?.color || 'bg-slate-100 text-slate-500'">
+                                    <i class="fa-solid" :class="staff.availableRoles.find(r => r.value === member.role)?.icon || 'fa-user'"></i>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <h3 class="font-bold text-lg dark:text-white leading-tight truncate">{{ member.name }}</h3>
+                                    <p class="text-sm text-slate-500 truncate">@{{ member.username }}</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 mb-6 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-slate-500 dark:text-slate-400">Rol asignado:</span>
+                                    <span class="font-bold capitalize dark:text-white">{{ staff.availableRoles.find(r => r.value === member.role)?.label || member.role }}</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-slate-500 dark:text-slate-400">PIN POS:</span>
+                                    <span class="font-mono font-bold dark:text-slate-300">{{ member.pin ? '****' : '---' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button @click="staff.toggleStatus(member)" class="flex-1 py-2 rounded-lg text-xs font-bold transition border hover:bg-slate-50 dark:hover:bg-slate-700"
+                                        :class="member.active ? 'border-slate-200 text-slate-500' : 'border-green-200 text-green-600 bg-green-50'">
+                                    {{ member.active ? 'Suspender' : 'Activar' }}
+                                </button>
+                                <button @click="staff.openModal(member)" class="flex-1 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition">
+                                    Editar
+                                </button>
+                                <button @click="staff.deleteStaff(member._id)" class="w-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition border border-transparent hover:border-red-100">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div v-if="currentView === 'kds'" class="h-full flex flex-col animate-fade-in">
+                    <!-- ===================== NUEVA VISTA KDS (COCINA) ===================== -->
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold dark:text-white flex items-center gap-2">
                             <i class="fa-solid fa-fire-burner text-orange-500"></i> Cocina (KDS)
@@ -1676,8 +2088,7 @@
                             <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold">Prep: {{ kds.preparingOrders.value.length }}</span>
                         </div>
                     </div>
-                    
-                    <!-- TABLERO KDS -->
+                     
                     <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
                         
                         <!-- COLUMNA 1: PENDIENTES -->
@@ -1793,15 +2204,17 @@
         </div>
     </div>
 
-    <!-- MODAL ESCÁNER LEALTAD -->
+    
     <div v-if="showScanner" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+        <!-- MODAL ESCÁNER LEALTAD -->
         <button @click="stopScanner" class="absolute top-6 right-6 text-white bg-white/20 p-2 rounded-full z-10"><i class="fa-solid fa-xmark text-2xl"></i></button>
         <div id="reader" class="w-full max-w-md bg-white rounded-lg overflow-hidden relative"></div>
         <p class="text-white mt-8 text-sm font-medium">Apunta al código QR del cliente</p>
     </div>
 
-    <!-- MODAL ESCÁNER products -->
+    
     <div v-if="pos.showScannerProds.value" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
+        <!-- MODAL ESCÁNER products -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in border dark:border-slate-700">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white">
@@ -1817,8 +2230,9 @@
         </div>
     </div>
 
-    <!-- MODAL SAAS -->
+    
     <div v-if="showSaasModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL SAAS -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in border dark:border-slate-700">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ editingBusiness ? 'Editar Negocio' : 'Nuevo Cliente SaaS' }}</h3><button @click="showSaasModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
             <div class="p-6 space-y-4">
@@ -1833,8 +2247,9 @@
         </div>
     </div>
 
-    <!-- MODAL PAGO POS -->
+    
     <div v-if="pos.showPayModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+        <!-- MODAL PAGO POS -->
         <div class="bg-white dark:bg-slate-900 w-full h-auto max-h-[90vh] sm:max-h-screen max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col lg:flex-row overflow-y-auto sm:overflow-y-visible">
             <!-- Métodos -->
             <div class="w-full lg:w-1/3 bg-slate-100 dark:bg-slate-800 p-3 sm:p-4 lg:border-r dark:border-slate-700 space-y-2 lg:max-h-screen lg:overflow-y-auto">
@@ -1929,8 +2344,9 @@
         </div>
     </div>
 
-    <!-- MODAL POS: BUSCAR CLIENTE -->
+    
     <div v-if="pos.showCustomerModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL POS: BUSCAR CLIENTE -->
         <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[80vh]">
             <!-- Header -->
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
@@ -1981,8 +2397,9 @@
         </div>
     </div>
 
-    <!-- MODAL DESCUENTO POS -->
+    
     <div v-if="pos.showDiscountModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL DESCUENTO POS -->
         <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-fade-in border dark:border-slate-700">
             <!-- Header -->
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
@@ -2054,8 +2471,9 @@
         </div>
     </div>
 
-    <!-- NUEVO MODAL: DESCUENTO QUOTES -->
+    
     <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all">
+        <!-- NUEVO MODAL: DESCUENTO QUOTES -->
         <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl transform transition-all scale-100 animate-fade-in">
             <div class="text-center mb-6">
                 <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
@@ -2096,8 +2514,9 @@
         </div>
     </div>
 
-    <!-- MODAL PRODUCTO -->
+    
     <div v-if="showProductModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL PRODUCTO -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full md:w-full max-w-2xl overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[90vh]">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ editingProduct ? 'Editar' : 'Nuevo' }} Producto</h3><button @click="showProductModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
             <div class="p-6 space-y-4 overflow-y-auto">
@@ -2125,8 +2544,9 @@
         </div>
     </div>
 
-    <!-- MODAL DETALLE ITEM POS -->
+    
     <div v-if="showItemDetailsModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in">
+        <!-- MODAL DETALLE ITEM POS -->
         <div v-if="selectedCartItem" class="bg-white dark:bg-slate-800 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border dark:border-slate-700 flex flex-col max-h-[90vh]">
             
             <!-- Imagen Grande Header -->
@@ -2215,8 +2635,9 @@
         </div>
     </div>
 
-    <!-- MODAL CATEGORÍAS -->
+    
     <div v-if="showCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL CATEGORÍAS -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full md:w-full max-w-md overflow-hidden animate-fade-in border dark:border-slate-700">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ editingCategory ? 'Editar' : 'Nueva' }} Categoría</h3><button @click="showCategoryModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
             <div class="p-6 space-y-4">
@@ -2257,8 +2678,9 @@
         </div>
     </div>
 
-    <!-- MODAL COMPLEMENTOS / ADDONS -->
+    
     <div v-if="showAddonModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL COMPLEMENTOS / ADDONS -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full md:w-full max-w-lg overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[90vh]">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ editingAddon ? 'Editar' : 'Nuevo' }} Grupo de Opciones</h3><button @click="showAddonModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
             <div class="p-6 space-y-6 overflow-y-auto">
@@ -2285,8 +2707,9 @@
         </div>
     </div>
 
-    <!-- MODAL BANNERS -->
+    
     <div v-if="showBannerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL BANNERS -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full md:w-full max-w-lg overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[90vh]">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center"><h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ editingBanner ? 'Editar' : 'Nuevo' }} Banner</h3><button @click="showBannerModal = false" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button></div>
             <div class="p-6 space-y-4 overflow-y-auto">
@@ -2299,8 +2722,9 @@
         </div>
     </div>
 
-    <!-- MODAL ABRIR CAJA -->
+    
     <div v-if="finance.showOpenModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL ABRIR CAJA -->
         <div class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-fade-in">
             <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-4 text-center">Apertura de Caja</h3>
             <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">Ingresa el monto de efectivo con el que inicias el turno (Fondo).</p>
@@ -2318,8 +2742,9 @@
         </div>
     </div>
 
-    <!-- MODAL REGISTRAR MOVIMIENTO -->
+    
     <div v-if="finance.showMovementModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL REGISTRAR MOVIMIENTO -->
         <div class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-fade-in border-t-4" :class="finance.movementForm.type === 'in' ? 'border-green-500' : 'border-red-500'">
             <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">
                 {{ finance.movementForm.type === 'in' ? 'Ingreso de Efectivo' : 'Retiro de Efectivo' }}
@@ -2348,8 +2773,9 @@
         </div>
     </div>
 
-    <!-- MODAL CERRAR CAJA (CORTE) -->
+    
     <div v-if="finance.showCloseModal.value" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL CERRAR CAJA (CORTE) -->
         <div class="bg-white dark:bg-slate-800 w-full h-auto max-h-[95vh] sm:max-h-screen max-w-2xl rounded-2xl shadow-2xl animate-fade-in overflow-hidden flex flex-col overflow-y-auto sm:overflow-y-visible">
             <!-- Header -->
             <div class="text-center p-4 sm:p-6 lg:p-8 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-red-50 to-orange-50 dark:from-slate-900 dark:to-slate-800 shrink-0">
@@ -2361,7 +2787,7 @@
             </div>
 
             <!-- Body -->
-            <div class="p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
+            <div v-if="finance.closeStatusView.value == 'couts'" class="p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
                 
                 <!-- Información del Turno -->
                 <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 sm:p-4 border border-slate-200 dark:border-slate-700 space-y-2">
@@ -2474,7 +2900,7 @@
                     <!-- TARJETAS CRÉDITO -->
                     <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                            <div class="w-9 sm:w-10 h-9 sm:h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-lg flex items-center justify-center text-sm sm:text-lg shrink-0">
+                            <div class="w-9 sm:w-10 h-9 sm:h-10 bg-indigo-100 dark:bg-purple-900/30 text-purple-600 rounded-lg flex items-center justify-center text-sm sm:text-lg shrink-0">
                                 <i class="fa-regular fa-credit-card"></i>
                             </div>
                             <div>
@@ -2515,6 +2941,51 @@
                             </div>
                         </div>
                     </div>
+ 
+                    <!-- TRANSFERENCIAS -->
+                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                            <div class="w-9 sm:w-10 h-9 sm:h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-lg flex items-center justify-center text-sm sm:text-lg shrink-0">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-800 dark:text-white text-sm sm:text-base">Transferencias</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Transferencias contadas</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Recuento Manual</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-3 text-slate-400 font-bold">$</span>
+                                    <input v-model.number="finance.closeRecounts.transfer" type="number" step="0.01" placeholder="0.00" class="w-full pl-8 pr-3 py-2 sm:py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-bold text-right outline-none focus:ring-2 focus:ring-purple-500 dark:text-white text-sm sm:text-base">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Total Esperado</label>
+                                <div class="px-3 py-2 sm:py-2.5 rounded-lg bg-slate-200 dark:bg-slate-700 font-bold text-right text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
+                                    ${{ (finance.currentData.value.salesSummary?.transfer || 0).toFixed(2) }}
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Diferencia</label>
+                                <div class="px-3 py-2 sm:py-2.5 rounded-lg font-bold text-right text-xs sm:text-sm"
+                                     :class="(finance.closeRecounts.transfer || 0) === (finance.currentData.value.salesSummary?.transfer || 0)
+                                              ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                                              : (finance.closeRecounts.transfer || 0) > (finance.currentData.value.salesSummary?.transfer || 0)
+                                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                                              : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'">
+                                    <span v-if="(finance.closeRecounts.transfer || 0) === (finance.currentData.value.salesSummary?.transfer || 0)">-</span>
+                                    <span v-else-if="(finance.closeRecounts.transfer || 0) > (finance.currentData.value.salesSummary?.transfer || 0)">
+                                        Sobrante: ${{ ((finance.closeRecounts.transfer || 0) - (finance.currentData.value.salesSummary?.transfer || 0)).toFixed(2) }}
+                                    </span>
+                                    <span v-else>
+                                        Faltante: ${{ ((finance.currentData.value.salesSummary?.transfer || 0) - (finance.closeRecounts.transfer || 0)).toFixed(2) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- TOTAL REAL SUMADO -->
@@ -2532,18 +3003,59 @@
                 </div>
             </div>
 
+            <!-- Body -->
+            <div v-else class="p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
+                <div class="space-y-3 sm:space-y-4">
+                    <h4 class="font-bold text-slate-800 dark:text-white uppercase text-xs tracking-wider">Retiro por Corte</h4>
+                    <!-- EFECTIVO -->
+                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+                            <div class="flex items-center gap-2 sm:gap-3 w-full">
+                                <div class="w-9 sm:w-10 h-9 sm:h-10 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-lg flex items-center justify-center text-sm sm:text-lg shrink-0">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-800 dark:text-white text-sm sm:text-base">Efectivo en caja</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">${{ finance.currentData.value.currentCashInDrawer.toFixed(2) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-1 gap-2 sm:gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Monto a retirar</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-3 text-slate-400 font-bold">$</span>
+                                    <input v-model.number="finance.cashOut.value" type="number" step="0.01" placeholder="0.00" class="w-full pl-8 pr-3 py-2 sm:py-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-bold text-right outline-none focus:ring-2 focus:ring-green-500 dark:text-white text-sm sm:text-base">
+                                </div>
+                            </div> 
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TOTAL REAL SUMADO -->
+                <div class="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-xl p-4 sm:p-6 border border-slate-700">
+                    <p class="text-slate-400 text-xs uppercase tracking-wider font-bold mb-2">Efectivo que dejarás en caja</p>
+                    <div class="text-2xl sm:text-3xl lg:text-4xl font-black text-white flex items-baseline gap-1 sm:gap-2">
+                        <span>$</span>
+                        <span>{{ (finance.currentData.value.currentCashInDrawer - finance.cashOut.value).toFixed(2) }}</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Footer -->
             <div class="p-3 sm:p-4 lg:p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-2 sm:gap-3 shrink-0">
                 <button @click="finance.showCloseModal.value = false" class="flex-1 py-2.5 sm:py-3 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition text-sm sm:text-base">Cancelar</button>
                 <button @click="finance.closeRegister" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-bold py-2.5 sm:py-3 rounded-xl shadow-lg hover:opacity-90 transition active:scale-95 text-sm sm:text-base">
-                    Finalizar Corte
+                    <span v-if="finance.closeStatusView.value == 'couts'">Continuar</span>
+                    <span v-else>Finalizar Corte</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DETALLE DE CORTE / HISTÓRICO -->
+    
     <div v-if="finance.showShiftDetailModal.value" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <!-- MODAL DETALLE DE CORTE / HISTÓRICO -->
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="finance.showShiftDetailModal.value = false"></div>
         <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
             
@@ -2565,7 +3077,7 @@
             <div class="p-6 overflow-y-auto thin-scroll" v-if="finance.selectedShift.value">
                 
                 <!-- Resumen Superior (Tarjetas) -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                     <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                         <span class="block text-xs font-bold uppercase text-slate-400 mb-1">Fondo Inicial</span>
                         <span class="block text-xl font-black dark:text-white">${{ finance.selectedShift.value.initialCash.toFixed(2) }}</span>
@@ -2584,9 +3096,27 @@
                             -${{ finance.selectedShift.value.movements.filter(m => m.type === 'out').reduce((acc, m) => acc + m.amount, 0).toFixed(2) }}
                         </span>
                     </div>
-                    <div class="p-4 rounded-2xl bg-slate-900 dark:bg-primary text-white">
-                        <span class="block text-xs font-bold uppercase text-white/60 mb-1">Efectivo Final (Real)</span>
-                        <span class="block text-xl font-black">${{ finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '---' }}</span>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                    <!-- Ventas Tarjetas Credito -->
+                    <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                        <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Tarjetas Crédito</span>
+                        <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                            finance.selectedShift.value.totalCreditCard ? finance.selectedShift.value.totalCreditCard.toFixed(2) : '---' }}</span>
+                    </div> 
+                    <!-- Ventas Tarjetas Debito -->
+                    <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                        <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Tarjetas Débito</span>
+                        <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                            finance.selectedShift.value.totalDebitCard ? finance.selectedShift.value.totalDebitCard.toFixed(2) : '---' }}</span>
+                    </div>
+
+                    <!-- Ventas Efectivo -->
+                    <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                        <span class="block text-xs font-bold uppercase text-green-600 dark:text-green-400 mb-1">Efectivo Final (Real)</span>
+                        <span class="block text-xl font-black text-green-700 dark:text-green-300">${{ 
+                            finance.selectedShift.value.finalCashActual ? finance.selectedShift.value.finalCashActual.toFixed(2) : '---' }}</span>
                     </div>
                 </div>
 
@@ -2685,8 +3215,9 @@
         </div>
     </div>
 
-    <!-- MODAL COMPARTIR WHATSAPP -->
+    
     <div v-if="showShareModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all">
+        <!-- MODAL COMPARTIR WHATSAPP -->
         <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-all scale-100">
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
@@ -2708,7 +3239,7 @@
                             <i class="fa-solid fa-chevron-down text-xs"></i>
                         </div>
                     </div>
-                    <input v-model="sharePhone" type="tel" placeholder="123 456 7890" class="flex-1 h-14 px-4 rounded-xl bg-slate-50 dark:bg-slate-700 border-2 border-slate-100 dark:border-slate-600 dark:text-white text-lg font-bold outline-none focus:border-green-500 transition-colors placeholder-slate-300">
+                    <input v-model="sharePhone" type="tel" placeholder="123 456 7890" class="flex-1 w-full h-14 px-4 rounded-xl bg-slate-50 dark:bg-slate-700 border-2 border-slate-100 dark:border-slate-600 dark:text-white text-lg font-bold outline-none focus:border-green-500 transition-colors placeholder-slate-300">
                 </div>
             </div>
             
@@ -2720,9 +3251,9 @@
             </div>
         </div>
     </div>
-
-    <!-- NUEVO: MODAL PREVISUALIZACIÓN TICKET -->
+    
     <div v-if="showTicketModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all" style="z-index: 100;">
+        <!-- NUEVO: MODAL PREVISUALIZACIÓN TICKET -->
         <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh]">
             <!-- Header Modal -->
             <div class="p-4 border-b dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-t-3xl">
@@ -2773,7 +3304,7 @@
                     <div class="text-center mt-2">
                         <p>Método: {{ ticketData?.method }}</p>
                         <p class="mt-2 font-bold">¡Gracias por su compra!</p>
-                        <p class="text-[10px] mt-1">Software: Tengo Hambre</p>
+                        <p class="text-[10px] mt-1">Software: FudiPos</p>
                     </div>
                 </div>
             </div>
@@ -2787,9 +3318,9 @@
             </div>
         </div>
     </div>
-
-    <!-- MODAL HORARIOS -->
+    
     <div v-if="showBusinessHoursModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL HORARIOS -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in border dark:border-slate-700">
             <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white">Editar Horario: {{ tempBusinessHour.day }}</h3>
@@ -2836,8 +3367,8 @@
         </div>
     </div>
 
-    <!-- MODAL MAPA (LOCATION PICKER) -->
     <div v-if="showMapModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <!-- MODAL MAPA (LOCATION PICKER) -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in border dark:border-slate-700 flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white"><i class="fa-solid fa-location-dot text-red-500 mr-2"></i> Seleccionar Ubicación</h3>
@@ -2864,11 +3395,82 @@
             </div>
         </div>
     </div>
+
+    <div v-if="staff.showStaffModal.value" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <!-- Modal Staff -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="staff.showStaffModal.value = false"></div>
+        <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+            
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-black dark:text-white">
+                        {{ staff.isEditing.value ? 'Editar Miembro' : 'Nuevo Miembro' }}
+                    </h3>
+                    <p class="text-sm text-slate-500">Configura accesos y permisos.</p>
+                </div>
+                <button @click="staff.showStaffModal.value = false" class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                <form @submit.prevent="staff.saveStaff" class="space-y-5">
+                    
+                    <!-- Rol Selection -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-3">Rol del Usuario</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div v-for="role in staff.availableRoles" :key="role.value" 
+                                    @click="staff.staffForm.role = role.value"
+                                    class="cursor-pointer border rounded-xl p-3 flex flex-col items-center gap-2 transition hover:shadow-md select-none"
+                                    :class="staff.staffForm.role === role.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 opacity-60 hover:opacity-100'">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm" :class="role.color">
+                                    <i class="fa-solid" :class="role.icon"></i>
+                                </div>
+                                <span class="text-xs font-bold dark:text-white">{{ role.label }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inputs -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                            <input v-model="staff.staffForm.email" type="email" required class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-primary outline-none dark:text-white transition" placeholder="Email del empleado">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Usuario</label>
+                            <input v-model="staff.staffForm.username" type="text" required class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-primary outline-none dark:text-white transition" placeholder="login_user">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">PIN (4 Dígitos)</label>
+                            <input v-model="staff.staffForm.pin" type="text" maxlength="4" pattern="\d{4}" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-primary outline-none dark:text-white transition font-mono text-center tracking-widest" placeholder="0000">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">
+                            {{ staff.isEditing.value ? 'Nueva Contraseña (Opcional)' : 'Contraseña' }}
+                        </label>
+                        <input v-model="staff.staffForm.password" type="password" :required="!staff.isEditing.value" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-primary outline-none dark:text-white transition" placeholder="********">
+                    </div>
+
+                    <div class="pt-4 flex gap-3">
+                        <button type="button" @click="staff.showStaffModal.value = false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">Cancelar</button>
+                        <button type="submit" class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primaryDark transition shadow-lg shadow-primary/20">
+                            {{ staff.isEditing.value ? 'Guardar' : 'Crear' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-   
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqYcfefGddEiqR-OlfaLMSWP5m2RdMk18&libraries=places" async defer></script>
-    <script src="../assets/js/admin/app.js" type="module" async></script>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqYcfefGddEiqR-OlfaLMSWP5m2RdMk18&libraries=places" async defer></script>
+<script src="../assets/js/admin/app.js" type="module" async></script>
 </body>
 </html>

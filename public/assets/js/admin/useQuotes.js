@@ -37,8 +37,7 @@ export function useQuotes(setingsRef) {
     const fetchQuotes = async () => {
         try {
             const res = await authFetch('/api/quotes');
-            if (res.ok) quotesList.value = await res.json();
-            console.log("Listado de productos> " , quotesList.value)
+            if (res.ok) quotesList.value = await res.json(); 
         } catch (e) { console.error("Error fetching Quotes", e); }
     };
 
@@ -127,8 +126,7 @@ export function useQuotes(setingsRef) {
             form.items.push({
                 ...product,
                 qty: 1
-            });
-            console.log("elemento agregado... " , form);
+            }); 
             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
             Toast.fire({ icon: 'success', title: 'Producto agregado' });
         }
@@ -179,13 +177,6 @@ export function useQuotes(setingsRef) {
     const editQuote = (quote) => {
         // Buscar el cliente completo en dbClients por customerId
         const fullClient = dbClients.value.find(client => client._id === quote.customerId);
-
-        // Reconstruir items con información completa desde dbProducts
-        const completeItems = quote.items.map(itemId => {
-            // Buscar el producto en dbProducts
-            const product = dbProducts.value.find(prod => prod._id === itemId._id);
-            return product || null; // Retornar el producto o null si no existe
-        }).filter(item => item !== null); // Filtrar items que no se encontraron
         // Copiar la cotización al formulario
         Object.assign(form, JSON.parse(JSON.stringify(quote)));
         
@@ -195,14 +186,6 @@ export function useQuotes(setingsRef) {
             clientSearch.value = fullClient.name;
         }
         
-        // Reemplazar los items con la información completa
-        form.items = completeItems.map(product => ({
-            ...product,
-            qty: quote.items.find(item => 
-                typeof item === 'object' ? item._id === product._id : false
-            )?.qty || 1
-        }));
-
         // Asegurar compatibilidad si la cotización guardada no tenía campo de descuento
         if (!form.discount) form.discount = { type: 'fixed', value: 0, title: '' };
 
@@ -230,12 +213,12 @@ export function useQuotes(setingsRef) {
     const generatePDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-
+ 
         // Header
         doc.setFontSize(22);
         doc.text("COTIZACIÓN", 105, 20, { align: "center" });
         doc.setFontSize(10);
-        doc.text(`Folio: #${form.id.slice(-6)}`, 150, 30);
+        doc.text(`Folio: #${form._id.slice(-6)}`, 150, 30);
         doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 150, 35);
         doc.text(`Válido hasta: ${form.validUntil}`, 150, 40);
 
@@ -291,11 +274,11 @@ export function useQuotes(setingsRef) {
             doc.text(form.notes, 20, y + 5);
         }
 
-        doc.save(`Cotizacion_${form.id.slice(-4)}.pdf`);
+        doc.save(`Cotizacion_${form._id.slice(-4)}.pdf`);
     };
 
-    const sendWhatsApp = () => {
-        let msg = `Hola ${clientSearch.value}, cotización #${form.id.slice(-6)}:\n\n`;
+    const sendWhatsApp = (settings) => {
+        let msg = `Hola ${clientSearch.value}, Te comparto tú cotización #${form._id.slice(-6)}:\n\n`; 
         form.items.forEach(i => {
             msg += `${i.qty} x ${i.name} - $${(i.price * i.qty).toFixed(2)}\n`;
         });
@@ -305,13 +288,14 @@ export function useQuotes(setingsRef) {
             msg += `\nDescuento: -$${totals.value.discount.toFixed(2)}`;
         }
 
-        msg += `\n*TOTAL: $${totals.value.total.toFixed(2)}*`;
+        msg += `\n*TOTAL: $${totals.value.total.toFixed(2)}*\n\n`;
+        msg += `\n** ${settings.appName || 'FudiPos'} - Agradece tú preferencia **`;
         return encodeURIComponent(msg);
     };
 
     const sendEmail = () => {
-        const subject = `Cotización #${form.id.slice(-6)}`;
-        let body = `Hola ${clientSearch.value},\n\n`;
+        const subject = `Cotización #${form._id.slice(-6)}`;
+        let body = `Hola ${clientSearch.value}, Te comparto la cotización #${form._id.slice(-6)}:\n\n`;
         form.items.forEach(i => {
             body += `${i.qty} x ${i.name} ($${i.price}) = $${(i.price * i.qty).toFixed(2)}\n`;
         });
@@ -321,7 +305,8 @@ export function useQuotes(setingsRef) {
             body += `\nDescuento: -$${totals.value.discount.toFixed(2)}`;
         }
 
-        body += `\nTOTAL: $${totals.value.total.toFixed(2)}`;
+        body += `\nTOTAL: $${totals.value.total.toFixed(2)}\n\n`;
+        body += `\n** FudiPos - Gracias por tú preferencia **`;
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     };
 

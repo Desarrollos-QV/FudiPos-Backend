@@ -6,7 +6,7 @@ export function useProducts(isDark, fetchMedia) {
     const showProductModal = ref(false);
     const editingProduct = ref(null);
     const showMediaSelector = ref(false);
-
+    const selectedCategory = ref('all');
     // Formulario Base
     const defaultForm = {
         name: '', price: 0, description: '', image: '', imageName: '',
@@ -49,6 +49,7 @@ export function useProducts(isDark, fetchMedia) {
 
             const res = await authFetch('/api/products');
             if (res.ok) products.value = await res.json();
+            console.log(products.value)
             
         } catch (e) { console.error("Error fetching products", e); }
     };
@@ -171,6 +172,28 @@ export function useProducts(isDark, fetchMedia) {
         return cat ? cat.name : 'Sin cat.';
     };
 
+    // Add computed for filteredProducts
+    const filteredProducts = computed(() => {
+        let res = products.value.filter(p => p.active);
+        if (selectedCategory.value !== 'all') {
+            res = res.filter(p => p.categories?.some(cat => (cat._id || cat) === selectedCategory.value));
+        }
+        return res;
+    });
+
+    const selectedCategoryName = computed(() => {
+        if (selectedCategory.value === 'all') return 'Todos los productos';
+        const c = availableCategories.value.find(x => x._id === selectedCategory.value);
+        return c ? c.name : 'Productos';
+    });
+    
+    // Update selectCategory
+    const selectCategory = (category) => {
+        selectedCategory.value = category;
+        return filteredProducts.value;
+    };
+
+
     // --- TRENDING TOP (Nuevo) ---
     const toggleTrending = async (product) => {
         try {
@@ -209,6 +232,10 @@ export function useProducts(isDark, fetchMedia) {
         deleteProduct,
         deleteImagePreviewProd,
         getCategoryName,
-        toggleTrending
+        toggleTrending,
+        selectCategory,
+        selectedCategoryName,
+        selectedCategory,
+        filteredProducts
     };
 }

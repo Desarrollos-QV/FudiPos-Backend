@@ -10,12 +10,10 @@ export function useLoyalty() {
     let html5QrCode = null;
 
     const fetchProgram = async () => {
-        try {
-            console.log("Solicitamos config")
+        try { 
             const res = await authFetch('/api/loyalty/config');
             if (res.ok) {
-                program.value = await res.json();
-                console.log("program ",program.value);
+                program.value = await res.json(); 
                 
             }
         } catch (e) { console.error(e); }
